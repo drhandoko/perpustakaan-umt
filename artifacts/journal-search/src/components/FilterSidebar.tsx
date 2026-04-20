@@ -16,7 +16,7 @@ import { SlidersHorizontal, Check, ExternalLink } from "lucide-react";
 import type { SearchFilters, SearchType } from "../lib/search";
 import {
   LANGUAGES, LICENSES, BOOK_SOURCES, YEAR_MIN, YEAR_MAX,
-  JOURNAL_SUBJECT_GROUPS,
+  JOURNAL_SUBJECT_GROUPS, JOURNAL_RANKING_OPTIONS,
 } from "../data/mockArticles";
 
 interface FilterSidebarProps {
@@ -165,6 +165,42 @@ function BookSourceFilter({
   );
 }
 
+// ─── Journal ranking filter ───────────────────────────────────────────────────
+// Single-select radio group.  "any" (default) shows all journals.
+// Q1–Q4 match the journalQuartile field; "unranked" matches undefined quartile.
+
+function JournalRankingFilter({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (next: string) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-2.5">
+      {JOURNAL_RANKING_OPTIONS.map((opt) => (
+        <label
+          key={opt.value}
+          className="flex items-center gap-2.5 cursor-pointer group"
+        >
+          <input
+            type="radio"
+            name="journal-ranking"
+            value={opt.value}
+            checked={value === opt.value}
+            onChange={() => onChange(opt.value)}
+            className="accent-primary w-3.5 h-3.5 shrink-0"
+            data-testid={`filter-ranking-${opt.value}`}
+          />
+          <span className="text-sm text-foreground/80 group-hover:text-primary transition-colors">
+            {opt.label}
+          </span>
+        </label>
+      ))}
+    </div>
+  );
+}
+
 // ─── Journal subject / field filter ──────────────────────────────────────────
 // Shows all discipline groups as checkboxes.  Matching is done client-side
 // using substring matching against DOAJ LCC subject terms (see search.ts).
@@ -302,6 +338,7 @@ export function FilterSidebar({
   const showLicense  = searchType === "articles";
   const showSources  = searchType === "books";
   const showSubjects = searchType === "journals";
+  const showRanking  = searchType === "journals";
   const sources     = FOOTER_SOURCE[searchType];
 
   return (
@@ -338,6 +375,16 @@ export function FilterSidebar({
               yearFrom={filters.yearFrom}
               yearTo={filters.yearTo}
               onChange={onChange}
+            />
+          </FilterSection>
+        )}
+
+        {/* ── Journal Ranking (journals only) ── */}
+        {showRanking && (
+          <FilterSection label="Journal Ranking">
+            <JournalRankingFilter
+              value={filters.journalRanking ?? "any"}
+              onChange={(next) => onChange({ journalRanking: next })}
             />
           </FilterSection>
         )}

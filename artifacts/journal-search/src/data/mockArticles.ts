@@ -13,6 +13,12 @@
  */
 export type ContentType = "article" | "journal" | "book";
 
+/**
+ * SJR (Scimago Journal Rankings) quartile tier.
+ * Undefined means the journal is not indexed in SJR or data is unavailable.
+ */
+export type JournalQuartile = "Q1" | "Q2" | "Q3" | "Q4";
+
 export interface Article {
   id: string;
   contentType: ContentType;
@@ -38,6 +44,12 @@ export interface Article {
   subjects?: string[];
   /** Country of the publisher (journals) */
   country?: string;
+  /**
+   * SJR quartile ranking for journal records.
+   * Only present when quartile data is available.
+   * Undefined = unranked / not indexed in SJR.
+   */
+  journalQuartile?: JournalQuartile;
 }
 
 /** Kept for backwards-compatibility with any import that references this. */
@@ -88,6 +100,22 @@ export const BOOK_SOURCES: BookSourceOption[] = [
 
 export const YEAR_MIN = 2000;
 export const YEAR_MAX = 2026;
+
+// ─── Journal ranking options ──────────────────────────────────────────────────
+
+/**
+ * Ranking filter options shown in the sidebar for Journals mode.
+ * "any" is the default and shows all results regardless of quartile.
+ * "unranked" matches journals where `journalQuartile` is undefined.
+ */
+export const JOURNAL_RANKING_OPTIONS: { value: string; label: string }[] = [
+  { value: "any",      label: "Any ranking" },
+  { value: "Q1",       label: "Q1 — Top 25%" },
+  { value: "Q2",       label: "Q2 — Upper mid" },
+  { value: "Q3",       label: "Q3 — Lower mid" },
+  { value: "Q4",       label: "Q4 — Bottom 25%" },
+  { value: "unranked", label: "Unranked" },
+];
 
 // ─── Journal subject groups ───────────────────────────────────────────────────
 //

@@ -16,7 +16,7 @@
  */
 
 import { ExternalLink, Calendar, Globe, Scale, FileDown, Tag, MapPin, BookMarked } from "lucide-react";
-import type { Article, ContentType } from "../data/mockArticles";
+import type { Article, ContentType, JournalQuartile } from "../data/mockArticles";
 
 interface ArticleCardProps {
   article: Article;
@@ -48,6 +48,17 @@ function licenseBadgeClass(license: string): string {
   if (license.startsWith("CC BY-NC"))     return "bg-amber-50 text-amber-700 border-amber-200";
   if (license.startsWith("CC BY-SA"))     return "bg-sky-50 text-sky-700 border-sky-200";
   return "bg-muted text-muted-foreground border-border";
+}
+
+/**
+ * Returns Tailwind classes for an SJR quartile badge.
+ * Q1 = emerald (top), Q2 = sky, Q3 = amber, Q4 = rose (bottom).
+ */
+function quartileBadgeClass(q: JournalQuartile): string {
+  if (q === "Q1") return "bg-emerald-50 text-emerald-700 border-emerald-200";
+  if (q === "Q2") return "bg-sky-50 text-sky-700 border-sky-200";
+  if (q === "Q3") return "bg-amber-50 text-amber-700 border-amber-200";
+  return            "bg-rose-50 text-rose-700 border-rose-200";
 }
 
 /** Source badge colour per book index provider. */
@@ -179,7 +190,7 @@ function BookBody({ article }: { article: Article }) {
 // ─── Main card ────────────────────────────────────────────────────────────────
 
 export function ArticleCard({ article }: ArticleCardProps) {
-  const { id, title, contentType, doi, sourceUrl, pdfUrl, license, abstract, source } = article;
+  const { id, title, contentType, doi, sourceUrl, pdfUrl, license, abstract, source, journalQuartile } = article;
 
   return (
     <article
@@ -200,6 +211,17 @@ export function ArticleCard({ article }: ArticleCardProps) {
             data-testid={`badge-source-${id}`}
           >
             {source}
+          </span>
+        )}
+
+        {/* SJR quartile badge — journals only, shown only when quartile data is available */}
+        {contentType === "journal" && journalQuartile && (
+          <span
+            className={`${badgeBase} ${quartileBadgeClass(journalQuartile)}`}
+            data-testid={`badge-quartile-${id}`}
+            title="SJR (Scimago Journal Rankings) quartile"
+          >
+            {journalQuartile}
           </span>
         )}
 

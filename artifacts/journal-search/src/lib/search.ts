@@ -52,6 +52,13 @@ export interface SearchFilters {
    * Empty array = show all subjects.
    */
   journalSubjects: string[];
+  /**
+   * SJR quartile ranking filter (Journals mode only).
+   * "any"      = no filter (show all)
+   * "Q1"–"Q4"  = match that exact quartile
+   * "unranked" = match journals with no quartile data
+   */
+  journalRanking: string;
 }
 
 // ─── Sort order ───────────────────────────────────────────────────────────────
@@ -102,8 +109,9 @@ export function applyFilters(
   filters: SearchFilters
 ): Article[] {
   const { yearFrom, yearTo, language, license } = filters;
-  // Guard against stale HMR state that predates this field being added.
+  // Guards against stale HMR state that predates these fields being added.
   const journalSubjects: string[] = filters.journalSubjects ?? [];
+  const journalRanking: string    = filters.journalRanking  ?? "any";
 
   // Pre-compute the selected subject groups' match terms for O(1) lookups.
   const selectedMatchTerms: string[] =
@@ -140,6 +148,16 @@ export function applyFilters(
         articleSubjects.some((subj) => subj.includes(term))
       );
       if (!matches) return false;
+    }
+
+    // Journal ranking filter — only applied when the article is a journal and
+    // a specific ranking tier (not "any") is selected.
+    if (article.contentType === "journal" && journalRanking !== "any") {
+      if (journalRanking === "unranked") {
+        if (article.journalQuartile) return false;
+      } else {
+        if (article.journalQuartile !== journalRanking) return false;
+      }
     }
 
     return true;
