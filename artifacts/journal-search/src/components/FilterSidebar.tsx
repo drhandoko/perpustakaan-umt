@@ -216,8 +216,8 @@ export function FilterSidebar({
           </div>
         </FilterSection>
 
-        {/* Footer note */}
-        <div className="py-5">
+        {/* Footer note + Apply Filters */}
+        <div className="py-5 flex flex-col gap-4">
           <p className="text-[11px] text-muted-foreground/60 leading-relaxed">
             Results are fetched from{" "}
             <a
@@ -239,31 +239,28 @@ export function FilterSidebar({
             </a>{" "}
             public APIs. No API key required.
           </p>
+
+          {dirty && (
+            <p className="text-[11px] text-amber-600 leading-snug">
+              Filter changes not yet applied
+            </p>
+          )}
+
+          <button
+            type="button"
+            onClick={onApply}
+            data-testid="button-apply-filters"
+            className={`w-full inline-flex items-center justify-center gap-2 text-sm font-semibold py-2.5 rounded-lg transition-all ${
+              dirty
+                ? "bg-primary text-primary-foreground hover:opacity-90 shadow-sm"
+                : "bg-muted text-muted-foreground border border-border cursor-default"
+            }`}
+            aria-label="Apply filters to current results"
+          >
+            <Check className="w-4 h-4" aria-hidden="true" />
+            Apply Filters
+          </button>
         </div>
-      </div>
-
-      {/* Apply Filters button — sticky at the bottom */}
-      <div className="px-6 py-5 border-t border-sidebar-border bg-sidebar">
-        {dirty && (
-          <p className="text-[11px] text-amber-600 mb-2.5 leading-snug">
-            Filter changes not yet applied
-          </p>
-        )}
-
-        <button
-          type="button"
-          onClick={onApply}
-          data-testid="button-apply-filters"
-          className={`w-full inline-flex items-center justify-center gap-2 text-sm font-semibold py-2.5 rounded-lg transition-all ${
-            dirty
-              ? "bg-primary text-primary-foreground hover:opacity-90 shadow-sm"
-              : "bg-muted text-muted-foreground border border-border cursor-default"
-          }`}
-          aria-label="Apply filters to current results"
-        >
-          <Check className="w-4 h-4" aria-hidden="true" />
-          Apply Filters
-        </button>
       </div>
     </aside>
   );
