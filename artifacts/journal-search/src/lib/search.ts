@@ -1,32 +1,23 @@
 /**
- * Search and filtering logic for the Open Access Journal Search portal.
+ * Client-side filtering applied on top of API results.
  *
- * ─────────────────────────────────────────────────────────
- * HOW TO INTEGRATE A REAL API
- * ─────────────────────────────────────────────────────────
- * Replace the body of `searchArticles` with a real API call, for example:
+ * DOAJ already filters by keyword server-side. After the results arrive,
+ * this function applies the sidebar filter values (year, language, license)
+ * locally on the returned Article array.
  *
- *   const params = new URLSearchParams({ q: query, year_min, year_max, ... });
- *   const res = await fetch(`https://api.core.ac.uk/v3/search/works?${params}`, {
- *     headers: { Authorization: `Bearer ${import.meta.env.VITE_CORE_API_KEY}` }
- *   });
- *   const json = await res.json();
- *   return json.results.map(transformCoreResult); // adapt to Article shape
- *
- * Candidate APIs:
- *   - CORE        https://core.ac.uk/services/api
- *   - OpenAlex    https://docs.openalex.org/
- *   - EuropePMC   https://europepmc.org/RestfulWebService
- *   - Unpaywall   https://unpaywall.org/products/api
- * ─────────────────────────────────────────────────────────
+ * ─── Swapping APIs ──────────────────────────────────────────────────────────
+ * The actual API call lives in src/lib/doajApi.ts.
+ * To add another provider (OpenAlex, CORE, EuropePMC), create a parallel
+ * file (e.g. src/lib/openalexApi.ts) that returns Article[] and call it
+ * from SearchPage.tsx alongside or instead of searchDoaj().
+ * ─────────────────────────────────────────────────────────────────────────────
  */
 
 import type { Article } from "../data/mockArticles";
-import { mockArticles } from "../data/mockArticles";
 
 export interface SearchFilters {
   query: string;
-  source: string;
+  source: string;      // kept for future multi-source support; ignored for DOAJ (all results are "DOAJ")
   yearFrom: number | "";
   yearTo: number | "";
   language: string;
@@ -34,35 +25,18 @@ export interface SearchFilters {
 }
 
 /**
- * Searches and filters articles.
- * Currently uses in-memory mock data; swap the implementation for a real API.
+ * Apply sidebar filters to an array of Articles already returned by the API.
+ * Year-0 articles (year not available from DOAJ) are treated as passing the year filter.
  */
-export function searchArticles(filters: SearchFilters): Article[] {
-  const { query, source, yearFrom, yearTo, language, license } = filters;
+export function applyFilters(articles: Article[], filters: SearchFilters): Article[] {
+  const { yearFrom, yearTo, language, license } = filters;
 
-  const q = query.trim().toLowerCase();
-
-  return mockArticles.filter((article) => {
-    // Full-text search across title, authors, journal, abstract
-    if (q) {
-      const searchTarget = [
-        article.title,
-        article.authors.join(" "),
-        article.journal,
-        article.abstract ?? "",
-      ]
-        .join(" ")
-        .toLowerCase();
-
-      if (!searchTarget.includes(q)) return false;
+  return articles.filter((article) => {
+    // Year range — skip articles with year=0 (unavailable)
+    if (article.year !== 0) {
+      if (yearFrom !== "" && article.year < yearFrom) return false;
+      if (yearTo !== "" && article.year > yearTo) return false;
     }
-
-    // Source filter
-    if (source && source !== "All" && article.source !== source) return false;
-
-    // Year range filter
-    if (yearFrom !== "" && article.year < yearFrom) return false;
-    if (yearTo !== "" && article.year > yearTo) return false;
 
     // Language filter
     if (language && language !== "All" && article.language !== language) return false;

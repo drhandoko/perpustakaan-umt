@@ -226,7 +226,7 @@ export const mockArticles: Article[] = [
  */
 export const SOURCES = ["All", "PLOS ONE", "PubMed Central", "arXiv", "CORE", "EuropePMC"];
 
-export const LANGUAGES = ["All", "English", "Spanish", "French"];
+export const LANGUAGES = ["All", "English", "Spanish", "French", "German", "Portuguese"];
 
 export const LICENSES = ["All", "CC BY 4.0", "CC BY-NC 4.0", "CC BY-NC-ND 4.0", "CC BY-SA 4.0"];
 
