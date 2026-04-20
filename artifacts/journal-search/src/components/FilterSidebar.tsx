@@ -1,9 +1,8 @@
 /**
- * Left sidebar filter panel.
- * Filters: Source, Publication Year (from/to), Language, License.
+ * Left sidebar filter panel — polished university library style.
  */
 
-import { Filter } from "lucide-react";
+import { SlidersHorizontal } from "lucide-react";
 import type { SearchFilters } from "../lib/search";
 import { SOURCES, LANGUAGES, LICENSES, YEAR_MIN, YEAR_MAX } from "../data/mockArticles";
 
@@ -12,16 +11,10 @@ interface FilterSidebarProps {
   onChange: (updated: Partial<SearchFilters>) => void;
 }
 
-function FilterSection({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
+function FilterSection({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="py-4 border-b border-border last:border-b-0">
-      <h3 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">
+    <div className="py-5 border-b border-sidebar-border last:border-b-0">
+      <h3 className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground mb-3">
         {label}
       </h3>
       {children}
@@ -36,31 +29,28 @@ export function FilterSidebar({ filters, onChange }: FilterSidebarProps) {
       data-testid="filter-sidebar"
       aria-label="Search filters"
     >
-      {/* Sidebar header */}
-      <div className="flex items-center gap-2 px-5 py-4 border-b border-sidebar-border">
-        <Filter className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
-        <span className="text-sm font-semibold text-foreground">Filters</span>
+      {/* Sidebar title */}
+      <div className="flex items-center gap-2.5 px-6 py-5 border-b border-sidebar-border">
+        <SlidersHorizontal className="w-4 h-4 text-primary" aria-hidden="true" />
+        <span className="text-sm font-semibold text-foreground tracking-tight">Refine Results</span>
       </div>
 
-      <div className="px-5">
-        {/* Source filter */}
+      <div className="px-6">
+        {/* Source */}
         <FilterSection label="Source">
-          <div className="flex flex-col gap-1.5">
+          <div className="flex flex-col gap-2.5">
             {SOURCES.map((src) => (
-              <label
-                key={src}
-                className="flex items-center gap-2 cursor-pointer group"
-                data-testid={`filter-source-${src.replace(/\s+/g, "-").toLowerCase()}`}
-              >
+              <label key={src} className="flex items-center gap-2.5 cursor-pointer group">
                 <input
                   type="radio"
                   name="source"
                   value={src}
                   checked={filters.source === src}
                   onChange={() => onChange({ source: src })}
-                  className="accent-primary w-3.5 h-3.5"
+                  className="accent-primary w-3.5 h-3.5 shrink-0"
+                  data-testid={`filter-source-${src.replace(/\s+/g, "-").toLowerCase()}`}
                 />
-                <span className="text-sm text-foreground group-hover:text-primary transition-colors">
+                <span className="text-sm text-foreground/80 group-hover:text-primary transition-colors">
                   {src}
                 </span>
               </label>
@@ -68,11 +58,11 @@ export function FilterSidebar({ filters, onChange }: FilterSidebarProps) {
           </div>
         </FilterSection>
 
-        {/* Year range filter */}
+        {/* Year range */}
         <FilterSection label="Publication Year">
           <div className="flex items-center gap-2">
             <div className="flex flex-col gap-1 flex-1">
-              <label htmlFor="year-from" className="text-xs text-muted-foreground">
+              <label htmlFor="year-from" className="text-[11px] text-muted-foreground font-medium">
                 From
               </label>
               <input
@@ -83,17 +73,15 @@ export function FilterSidebar({ filters, onChange }: FilterSidebarProps) {
                 placeholder={String(YEAR_MIN)}
                 value={filters.yearFrom}
                 onChange={(e) =>
-                  onChange({
-                    yearFrom: e.target.value === "" ? "" : Number(e.target.value),
-                  })
+                  onChange({ yearFrom: e.target.value === "" ? "" : Number(e.target.value) })
                 }
-                className="w-full text-sm bg-card border border-border rounded px-2 py-1.5 text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                className="w-full text-sm bg-card border border-border rounded-lg px-2.5 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
                 data-testid="filter-year-from"
               />
             </div>
-            <span className="text-muted-foreground mt-5">–</span>
+            <span className="text-muted-foreground mt-5 text-sm">–</span>
             <div className="flex flex-col gap-1 flex-1">
-              <label htmlFor="year-to" className="text-xs text-muted-foreground">
+              <label htmlFor="year-to" className="text-[11px] text-muted-foreground font-medium">
                 To
               </label>
               <input
@@ -104,35 +92,30 @@ export function FilterSidebar({ filters, onChange }: FilterSidebarProps) {
                 placeholder={String(YEAR_MAX)}
                 value={filters.yearTo}
                 onChange={(e) =>
-                  onChange({
-                    yearTo: e.target.value === "" ? "" : Number(e.target.value),
-                  })
+                  onChange({ yearTo: e.target.value === "" ? "" : Number(e.target.value) })
                 }
-                className="w-full text-sm bg-card border border-border rounded px-2 py-1.5 text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                className="w-full text-sm bg-card border border-border rounded-lg px-2.5 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
                 data-testid="filter-year-to"
               />
             </div>
           </div>
         </FilterSection>
 
-        {/* Language filter */}
+        {/* Language */}
         <FilterSection label="Language">
-          <div className="flex flex-col gap-1.5">
+          <div className="flex flex-col gap-2.5">
             {LANGUAGES.map((lang) => (
-              <label
-                key={lang}
-                className="flex items-center gap-2 cursor-pointer group"
-                data-testid={`filter-language-${lang.toLowerCase()}`}
-              >
+              <label key={lang} className="flex items-center gap-2.5 cursor-pointer group">
                 <input
                   type="radio"
                   name="language"
                   value={lang}
                   checked={filters.language === lang}
                   onChange={() => onChange({ language: lang })}
-                  className="accent-primary w-3.5 h-3.5"
+                  className="accent-primary w-3.5 h-3.5 shrink-0"
+                  data-testid={`filter-language-${lang.toLowerCase()}`}
                 />
-                <span className="text-sm text-foreground group-hover:text-primary transition-colors">
+                <span className="text-sm text-foreground/80 group-hover:text-primary transition-colors">
                   {lang}
                 </span>
               </label>
@@ -140,24 +123,21 @@ export function FilterSidebar({ filters, onChange }: FilterSidebarProps) {
           </div>
         </FilterSection>
 
-        {/* License filter */}
+        {/* License */}
         <FilterSection label="License">
-          <div className="flex flex-col gap-1.5">
+          <div className="flex flex-col gap-2.5">
             {LICENSES.map((lic) => (
-              <label
-                key={lic}
-                className="flex items-center gap-2 cursor-pointer group"
-                data-testid={`filter-license-${lic.replace(/\s+/g, "-").toLowerCase()}`}
-              >
+              <label key={lic} className="flex items-center gap-2.5 cursor-pointer group">
                 <input
                   type="radio"
                   name="license"
                   value={lic}
                   checked={filters.license === lic}
                   onChange={() => onChange({ license: lic })}
-                  className="accent-primary w-3.5 h-3.5"
+                  className="accent-primary w-3.5 h-3.5 shrink-0"
+                  data-testid={`filter-license-${lic.replace(/\s+/g, "-").toLowerCase()}`}
                 />
-                <span className="text-sm text-foreground group-hover:text-primary transition-colors">
+                <span className="text-sm text-foreground/80 group-hover:text-primary transition-colors">
                   {lic}
                 </span>
               </label>

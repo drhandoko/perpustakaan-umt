@@ -1,7 +1,5 @@
 /**
- * Main search page.
- * Orchestrates the search bar, sidebar filters, and results area.
- * State is kept local — no backend needed for the mock-data phase.
+ * Main search page — Universitas Murni Teguh library portal.
  */
 
 import { useState, useCallback } from "react";
@@ -23,24 +21,12 @@ const DEFAULT_FILTERS: SearchFilters = {
 };
 
 export function SearchPage() {
-  /* Live query string shown in the input */
   const [inputQuery, setInputQuery] = useState("");
-
-  /* Committed filters — only applied when Search is clicked */
   const [activeFilters, setActiveFilters] = useState<SearchFilters>(DEFAULT_FILTERS);
-
-  /* Sidebar filter values (pending until Search is clicked) */
-  const [pendingFilters, setPendingFilters] = useState<Omit<SearchFilters, "query">>(
-    DEFAULT_FILTERS
-  );
-
-  /* Whether the user has triggered at least one search */
+  const [pendingFilters, setPendingFilters] = useState<Omit<SearchFilters, "query">>(DEFAULT_FILTERS);
   const [hasSearched, setHasSearched] = useState(false);
-
-  /* Current result set */
   const [results, setResults] = useState<Article[]>([]);
 
-  /** Run the search with current query + pending filters */
   const handleSearch = useCallback(() => {
     const filters: SearchFilters = { query: inputQuery, ...pendingFilters };
     setActiveFilters(filters);
@@ -48,7 +34,6 @@ export function SearchPage() {
     setHasSearched(true);
   }, [inputQuery, pendingFilters]);
 
-  /** Reset everything back to defaults */
   const handleReset = useCallback(() => {
     setInputQuery("");
     setPendingFilters(DEFAULT_FILTERS);
@@ -57,7 +42,6 @@ export function SearchPage() {
     setHasSearched(false);
   }, []);
 
-  /** Update a subset of sidebar filters */
   const handleFilterChange = useCallback(
     (updated: Partial<Omit<SearchFilters, "query">>) => {
       setPendingFilters((prev) => ({ ...prev, ...updated }));
@@ -67,26 +51,36 @@ export function SearchPage() {
 
   return (
     <main className="flex-1 flex min-h-0" data-testid="search-page">
-      {/* Left sidebar filters */}
+      {/* Left sidebar */}
       <FilterSidebar
         filters={{ ...pendingFilters, query: inputQuery }}
         onChange={handleFilterChange}
       />
 
-      {/* Main content */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
-        {/* Search bar area — sticky at top of content column */}
-        <div className="sticky top-0 z-10 bg-background border-b border-border px-6 py-5 shadow-sm">
+      {/* Main content column */}
+      <div className="flex-1 flex flex-col min-w-0 overflow-y-auto bg-background">
+        {/* Sticky search area */}
+        <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b border-border px-8 py-6">
           <SearchBar
             value={inputQuery}
             onChange={setInputQuery}
             onSearch={handleSearch}
             onReset={handleReset}
           />
+
+          {/* Disclaimer */}
+          <p
+            className="mt-3 text-xs text-muted-foreground leading-relaxed"
+            data-testid="text-disclaimer"
+          >
+            <span className="font-medium text-foreground/60">Disclaimer:</span>{" "}
+            Results are indexed from external open-access sources. Full text
+            remains hosted by the original publisher or repository.
+          </p>
         </div>
 
         {/* Results */}
-        <div className="px-6 py-6 flex">
+        <div className="px-8 py-8">
           <ResultsArea
             articles={results}
             hasSearched={hasSearched}

@@ -1,59 +1,25 @@
 /**
- * Article result card component.
- * Displays title, authors, journal, year, DOI, source, license,
- * and an "Open at source" button that opens the original publisher page in a new tab.
- *
- * NOTE: No PDFs or publisher content are embedded. The button always opens
- * the original source URL in a new browser tab.
+ * Article result card — polished university library style.
+ * All source links open in a new tab. No iframe embedding.
  */
 
-import { ExternalLink, FileText, Calendar, Globe, Tag, Scale } from "lucide-react";
+import { ExternalLink, Calendar, Globe, Scale } from "lucide-react";
 import type { Article } from "../data/mockArticles";
 
 interface ArticleCardProps {
   article: Article;
 }
 
-function MetaItem({
-  icon: Icon,
-  label,
-  value,
-}: {
-  icon: React.ElementType;
-  label: string;
-  value: string;
-}) {
-  return (
-    <div className="flex items-start gap-1.5 text-sm text-muted-foreground">
-      <Icon className="w-3.5 h-3.5 mt-0.5 shrink-0" aria-hidden="true" />
-      <span className="sr-only">{label}:</span>
-      <span>{value}</span>
-    </div>
-  );
-}
-
-/** Maps license strings to badge colors */
 function licenseBadgeClass(license: string): string {
   if (license.startsWith("CC BY 4")) return "bg-emerald-50 text-emerald-700 border-emerald-200";
+  if (license.startsWith("CC BY-NC-ND")) return "bg-rose-50 text-rose-700 border-rose-200";
   if (license.startsWith("CC BY-NC")) return "bg-amber-50 text-amber-700 border-amber-200";
-  if (license.startsWith("CC BY-SA")) return "bg-blue-50 text-blue-700 border-blue-200";
+  if (license.startsWith("CC BY-SA")) return "bg-sky-50 text-sky-700 border-sky-200";
   return "bg-muted text-muted-foreground border-border";
 }
 
 export function ArticleCard({ article }: ArticleCardProps) {
-  const {
-    id,
-    title,
-    authors,
-    journal,
-    year,
-    doi,
-    sourceUrl,
-    source,
-    license,
-    language,
-    abstract,
-  } = article;
+  const { id, title, authors, journal, year, doi, sourceUrl, source, license, language, abstract } = article;
 
   const authorString =
     authors.length > 3
@@ -62,33 +28,30 @@ export function ArticleCard({ article }: ArticleCardProps) {
 
   return (
     <article
-      className="bg-card border border-card-border rounded-lg p-5 shadow-sm hover:shadow-md transition-shadow duration-200"
+      className="bg-card border border-card-border rounded-2xl p-7 shadow-sm hover:shadow-lg transition-shadow duration-200 group"
       data-testid={`card-article-${id}`}
     >
-      {/* Top badges row */}
-      <div className="flex flex-wrap items-center gap-2 mb-2">
-        {/* Source badge */}
+      {/* Top row: source + license + language badges */}
+      <div className="flex flex-wrap items-center gap-2 mb-4">
         <span
-          className="text-xs font-medium bg-primary/10 text-primary border border-primary/20 rounded-full px-2.5 py-0.5"
+          className="text-[11px] font-semibold uppercase tracking-wider bg-primary/8 text-primary border border-primary/15 rounded-full px-3 py-1"
           data-testid={`badge-source-${id}`}
         >
           {source}
         </span>
 
-        {/* License badge (only if available) */}
         {license && (
           <span
-            className={`text-xs font-medium border rounded-full px-2.5 py-0.5 ${licenseBadgeClass(license)}`}
+            className={`text-[11px] font-semibold uppercase tracking-wider border rounded-full px-3 py-1 ${licenseBadgeClass(license)}`}
             data-testid={`badge-license-${id}`}
           >
             {license}
           </span>
         )}
 
-        {/* Language badge — only shown when not English */}
         {language !== "English" && (
           <span
-            className="text-xs font-medium bg-secondary text-secondary-foreground border border-border rounded-full px-2.5 py-0.5"
+            className="text-[11px] font-semibold uppercase tracking-wider bg-secondary text-secondary-foreground border border-border rounded-full px-3 py-1"
             data-testid={`badge-language-${id}`}
           >
             {language}
@@ -96,9 +59,9 @@ export function ArticleCard({ article }: ArticleCardProps) {
         )}
       </div>
 
-      {/* Article title */}
+      {/* Title */}
       <h2
-        className="text-base font-serif font-semibold text-foreground leading-snug mb-1"
+        className="text-[17px] font-serif font-semibold text-foreground leading-snug mb-2 group-hover:text-primary transition-colors"
         data-testid={`text-title-${id}`}
       >
         {title}
@@ -112,50 +75,57 @@ export function ArticleCard({ article }: ArticleCardProps) {
         {authorString}
       </p>
 
-      {/* Abstract (truncated) */}
+      {/* Abstract */}
       {abstract && (
-        <p className="text-sm text-foreground/80 leading-relaxed line-clamp-2 mb-3">
+        <p className="text-sm text-foreground/70 leading-relaxed line-clamp-2 mb-5">
           {abstract}
         </p>
       )}
 
-      {/* Metadata row */}
-      <div className="flex flex-wrap gap-x-5 gap-y-1 mb-4">
-        <MetaItem icon={FileText} label="Journal" value={journal} />
-        <MetaItem icon={Calendar} label="Year" value={String(year)} />
-        {doi && (
-          <MetaItem icon={Globe} label="DOI" value={doi} />
-        )}
-        {language && (
-          <MetaItem icon={Tag} label="Language" value={language} />
-        )}
+      {/* Divider */}
+      <div className="border-t border-border my-4" />
+
+      {/* Metadata pill row */}
+      <div className="flex flex-wrap gap-3 mb-5">
+        {/* Journal */}
+        <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground bg-muted rounded-full px-3 py-1">
+          <Globe className="w-3 h-3 shrink-0" aria-hidden="true" />
+          <span>{journal}</span>
+        </span>
+
+        {/* Year */}
+        <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground bg-muted rounded-full px-3 py-1">
+          <Calendar className="w-3 h-3 shrink-0" aria-hidden="true" />
+          <span>{year}</span>
+        </span>
+
+        {/* License pill */}
         {license && (
-          <MetaItem icon={Scale} label="License" value={license} />
+          <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground bg-muted rounded-full px-3 py-1">
+            <Scale className="w-3 h-3 shrink-0" aria-hidden="true" />
+            <span>{license}</span>
+          </span>
         )}
       </div>
 
-      {/* Footer — open at source */}
-      <div className="flex items-center justify-between">
+      {/* Footer: DOI + CTA */}
+      <div className="flex items-center justify-between gap-4">
         {doi ? (
           <span
-            className="text-xs text-muted-foreground font-mono"
+            className="text-[11px] font-mono text-muted-foreground/70 truncate"
             data-testid={`text-doi-${id}`}
           >
             DOI: {doi}
           </span>
         ) : (
-          <span className="text-xs text-muted-foreground italic">No DOI available</span>
+          <span className="text-[11px] text-muted-foreground/50 italic">No DOI available</span>
         )}
 
-        {/**
-         * Opens the original publisher/repository page in a new tab.
-         * We never embed external content in an iframe.
-         */}
         <a
           href={sourceUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center gap-1.5 text-sm font-medium text-primary border border-primary/30 hover:bg-primary hover:text-primary-foreground px-3 py-1.5 rounded-lg transition-colors duration-150"
+          className="shrink-0 inline-flex items-center gap-2 text-sm font-semibold text-primary bg-primary/6 border border-primary/20 hover:bg-primary hover:text-primary-foreground px-4 py-2 rounded-lg transition-colors duration-150"
           data-testid={`link-open-source-${id}`}
           aria-label={`Open "${title}" at source in a new tab`}
         >

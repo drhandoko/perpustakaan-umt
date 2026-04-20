@@ -1,9 +1,9 @@
 /**
- * Search bar component with keyword input, search button, and reset button.
+ * Search bar — polished university library portal style.
  */
 
 import { useState } from "react";
-import { Search, X } from "lucide-react";
+import { Search, X, RotateCcw } from "lucide-react";
 
 interface SearchBarProps {
   value: string;
@@ -21,19 +21,25 @@ export function SearchBar({ value, onChange, onSearch, onReset }: SearchBarProps
 
   return (
     <div className="w-full" data-testid="search-bar">
+      {/* Input row */}
       <div
-        className={`flex items-center gap-2 bg-card border rounded-lg px-4 py-3 shadow-sm transition-all duration-150 ${
-          focused ? "ring-2 ring-primary border-primary" : "border-border"
+        className={`flex items-center gap-3 bg-card border rounded-xl px-5 py-3.5 transition-all duration-150 ${
+          focused
+            ? "ring-2 ring-primary/25 border-primary shadow-md"
+            : "border-border shadow-sm"
         }`}
       >
-        {/* Search icon */}
-        <Search className="w-5 h-5 text-muted-foreground shrink-0" aria-hidden="true" />
+        <Search
+          className={`w-5 h-5 shrink-0 transition-colors duration-150 ${
+            focused ? "text-primary" : "text-muted-foreground"
+          }`}
+          aria-hidden="true"
+        />
 
-        {/* Keyword input */}
         <input
           type="search"
-          placeholder="Search by keyword, author, title, or journal..."
-          className="flex-1 bg-transparent text-foreground placeholder:text-muted-foreground text-sm focus:outline-none"
+          placeholder="Search by keyword, author, title, or journal…"
+          className="flex-1 bg-transparent text-foreground placeholder:text-muted-foreground/60 text-sm focus:outline-none"
           value={value}
           onChange={(e) => onChange(e.target.value)}
           onKeyDown={handleKeyDown}
@@ -43,12 +49,11 @@ export function SearchBar({ value, onChange, onSearch, onReset }: SearchBarProps
           aria-label="Search keyword"
         />
 
-        {/* Clear current query */}
         {value && (
           <button
             type="button"
             onClick={() => onChange("")}
-            className="text-muted-foreground hover:text-foreground transition-colors"
+            className="text-muted-foreground hover:text-foreground transition-colors p-0.5 rounded"
             data-testid="button-clear-query"
             aria-label="Clear search query"
           >
@@ -57,12 +62,12 @@ export function SearchBar({ value, onChange, onSearch, onReset }: SearchBarProps
         )}
       </div>
 
-      {/* Action buttons */}
-      <div className="flex gap-3 mt-3">
+      {/* Button row */}
+      <div className="flex items-center gap-3 mt-4">
         <button
           type="button"
           onClick={onSearch}
-          className="flex items-center gap-2 bg-primary text-primary-foreground hover:opacity-90 active:opacity-80 text-sm font-medium px-5 py-2 rounded-lg transition-opacity"
+          className="inline-flex items-center gap-2 bg-primary text-primary-foreground hover:opacity-90 active:scale-[0.98] text-sm font-semibold px-6 py-2.5 rounded-lg shadow-sm transition-all"
           data-testid="button-search"
         >
           <Search className="w-4 h-4" aria-hidden="true" />
@@ -72,10 +77,10 @@ export function SearchBar({ value, onChange, onSearch, onReset }: SearchBarProps
         <button
           type="button"
           onClick={onReset}
-          className="flex items-center gap-2 bg-secondary text-secondary-foreground hover:opacity-90 active:opacity-80 text-sm font-medium px-5 py-2 rounded-lg border border-border transition-opacity"
+          className="inline-flex items-center gap-2 bg-card text-foreground/70 hover:text-foreground hover:bg-muted border border-border text-sm font-medium px-5 py-2.5 rounded-lg transition-all"
           data-testid="button-reset"
         >
-          <X className="w-4 h-4" aria-hidden="true" />
+          <RotateCcw className="w-3.5 h-3.5" aria-hidden="true" />
           Reset
         </button>
       </div>
