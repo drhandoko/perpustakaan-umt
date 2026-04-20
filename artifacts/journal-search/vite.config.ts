@@ -66,6 +66,17 @@ export default defineConfig({
       strict: true,
       deny: ["**/.*"],
     },
+    // Proxy /api/* to the Express API server in development so the browser
+    // never has to talk to it directly (avoids CORS on cross-origin APIs such
+    // as DOAB).  In production the Replit path router — or an nginx/Caddy
+    // reverse proxy in self-hosted setups — handles the same routing.
+    proxy: {
+      "/api": {
+        target: "http://localhost:8080",
+        changeOrigin: true,
+        rewrite: (path) => path, // keep /api prefix intact
+      },
+    },
   },
   preview: {
     port,
