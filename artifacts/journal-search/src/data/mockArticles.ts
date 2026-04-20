@@ -88,3 +88,117 @@ export const BOOK_SOURCES: BookSourceOption[] = [
 
 export const YEAR_MIN = 2000;
 export const YEAR_MAX = 2026;
+
+// ─── Journal subject groups ───────────────────────────────────────────────────
+//
+// Each group maps a user-facing label to a list of lowercase LCC (Library of
+// Congress Classification) keyword fragments.  A journal passes the filter when
+// ANY of its DOAJ subject terms contains ANY of the match fragments
+// (case-insensitive substring match).
+//
+// The groups are ordered from broadest / most-searched to more specialised so
+// the sidebar reads naturally from top to bottom.
+
+export interface JournalSubjectGroup {
+  /** Label shown in the sidebar checkbox list. */
+  label: string;
+  /** Lowercase fragments matched against DOAJ bibjson.subject[].term values. */
+  matchTerms: string[];
+}
+
+export const JOURNAL_SUBJECT_GROUPS: JournalSubjectGroup[] = [
+  {
+    label: "Health & Medicine",
+    matchTerms: [
+      "medicine", "medical", "health", "nursing", "pharmacy", "pharmacology",
+      "dentistry", "surgery", "oncology", "cardiology", "pathology",
+      "psychiatry", "neurology", "ophthalmology", "dermatology", "pediatrics",
+      "gynecology", "obstetrics", "immunology", "virology", "epidemiology",
+      "radiology", "anesthesiology",
+    ],
+  },
+  {
+    label: "Social Sciences",
+    matchTerms: [
+      "social sciences", "social science", "sociology", "anthropology",
+      "demography", "human geography", "gender studies", "social work",
+      "communication", "media studies", "cultural studies",
+    ],
+  },
+  {
+    label: "Education",
+    matchTerms: [
+      "education", "teaching", "pedagogy", "curriculum", "learning",
+      "special education", "higher education", "educational technology",
+      "vocational", "school", "academic",
+    ],
+  },
+  {
+    label: "Psychology",
+    matchTerms: [
+      "psychology", "psychological", "cognitive", "behavioral", "behavior",
+      "psychotherapy", "neuroscience", "mental health",
+    ],
+  },
+  {
+    label: "Economics",
+    matchTerms: [
+      "economics", "economic", "macroeconomics", "microeconomics",
+      "econometrics", "development economics", "labour economics",
+      "industrial relations", "trade",
+    ],
+  },
+  {
+    label: "Business & Management",
+    matchTerms: [
+      "management", "business", "commerce", "marketing", "accounting",
+      "finance", "financial", "banking", "logistics", "operations",
+      "entrepreneurship", "leadership", "administration", "organizational",
+      "supply chain", "human resource",
+    ],
+  },
+  {
+    label: "Law & Political Science",
+    matchTerms: [
+      "law", "political science", "politics", "legislation", "jurisprudence",
+      "government", "public administration", "constitutional",
+      "international relations", "diplomacy", "criminology", "security studies",
+    ],
+  },
+  {
+    label: "Natural Sciences",
+    matchTerms: [
+      "science", "mathematics", "physics", "chemistry", "biology", "botany",
+      "zoology", "ecology", "genetics", "microbiology", "biochemistry",
+      "molecular biology", "astronomy", "geology", "geophysics",
+      "oceanography", "atmospheric", "statistics",
+    ],
+  },
+  {
+    label: "Technology & Engineering",
+    matchTerms: [
+      "technology", "engineering", "computer science", "information technology",
+      "electronics", "manufacturing", "mechanical", "chemical engineering",
+      "electrical", "civil engineering", "architecture",
+      "artificial intelligence", "robotics", "telecommunications", "materials science",
+    ],
+  },
+  {
+    label: "Agriculture & Environment",
+    matchTerms: [
+      "agriculture", "environmental", "forestry", "veterinary", "fisheries",
+      "horticulture", "soil science", "food science", "agronomy",
+      "plant science", "animal science", "aquaculture", "sustainability",
+      "climate change", "natural resources",
+    ],
+  },
+  {
+    label: "Humanities",
+    matchTerms: [
+      "history", "philosophy", "literature", "linguistics", "language",
+      "arts", "music", "performing arts", "religion", "theology",
+      "archaeology", "classics", "mythology", "cultural heritage",
+      "library science", "information science",
+    ],
+  },
+];

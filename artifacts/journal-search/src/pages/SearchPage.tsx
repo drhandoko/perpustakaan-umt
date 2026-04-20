@@ -39,11 +39,12 @@ const DEFAULT_BOOK_SOURCES = BOOK_SOURCES.filter((s) => s.active).map((s) => s.i
 // ─── Defaults ─────────────────────────────────────────────────────────────────
 
 const DEFAULT_FILTERS: Omit<SearchFilters, "query"> = {
-  yearFrom:    "",
-  yearTo:      "",
-  language:    [],
-  license:     [],
-  bookSources: DEFAULT_BOOK_SOURCES,
+  yearFrom:        "",
+  yearTo:          "",
+  language:        [],
+  license:         [],
+  bookSources:     DEFAULT_BOOK_SOURCES,
+  journalSubjects: [],
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -59,9 +60,10 @@ function filtersAreEqual(
   return (
     a.yearFrom === b.yearFrom &&
     a.yearTo   === b.yearTo   &&
-    arraysEqual(a.language,    b.language)    &&
-    arraysEqual(a.license,     b.license)     &&
-    arraysEqual(a.bookSources, b.bookSources)
+    arraysEqual(a.language,        b.language)        &&
+    arraysEqual(a.license,         b.license)         &&
+    arraysEqual(a.bookSources,     b.bookSources)     &&
+    arraysEqual(a.journalSubjects, b.journalSubjects)
   );
 }
 

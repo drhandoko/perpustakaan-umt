@@ -10,6 +10,7 @@
  */
 
 import type { Article } from "../data/mockArticles";
+import { JOURNAL_SUBJECT_GROUPS } from "../data/mockArticles";
 
 // ─── Search type ──────────────────────────────────────────────────────────────
 
@@ -29,7 +30,7 @@ export const SEARCH_TYPE_OPTIONS: { value: SearchType; label: string }[] = [
  * Not all fields apply to every SearchType — the sidebar renders only the
  * relevant ones per type.
  *
- *  journals : language[]
+ *  journals : language[], journalSubjects[]
  *  books    : yearFrom, yearTo, language[], bookSources[]
  *  articles : yearFrom, yearTo, language[], license[]
  */
@@ -45,6 +46,12 @@ export interface SearchFilters {
    * Only active (implemented) sources should be sent to the backend.
    */
   bookSources: string[];
+  /**
+   * Selected journal subject group labels (Journals mode only).
+   * Values are JournalSubjectGroup.label strings, e.g. "Health & Medicine".
+   * Empty array = show all subjects.
+   */
+  journalSubjects: string[];
 }
 
 // ─── Sort order ───────────────────────────────────────────────────────────────
@@ -88,13 +95,24 @@ export function mergeAndDeduplicate(
 /**
  * Apply sidebar filters to an Article array.
  * Year-0 records (year not available) always pass the year filter.
- * Empty arrays for language / license mean "show all".
+ * Empty arrays for language / license / journalSubjects mean "show all".
  */
 export function applyFilters(
   articles: Article[],
   filters: SearchFilters
 ): Article[] {
   const { yearFrom, yearTo, language, license } = filters;
+  // Guard against stale HMR state that predates this field being added.
+  const journalSubjects: string[] = filters.journalSubjects ?? [];
+
+  // Pre-compute the selected subject groups' match terms for O(1) lookups.
+  const selectedMatchTerms: string[] =
+    journalSubjects.length > 0
+      ? JOURNAL_SUBJECT_GROUPS
+          .filter((g) => journalSubjects.includes(g.label))
+          .flatMap((g) => g.matchTerms)
+          .map((t) => t.toLowerCase())
+      : [];
 
   return articles.filter((article) => {
     if (article.year !== 0) {
@@ -107,6 +125,21 @@ export function applyFilters(
 
     if (license.length > 0) {
       if (!article.license || !license.includes(article.license)) return false;
+    }
+
+    // Journal subject filter — only applied when the article is a journal and
+    // at least one subject group is selected.
+    if (
+      article.contentType === "journal" &&
+      selectedMatchTerms.length > 0
+    ) {
+      const articleSubjects = (article.subjects ?? []).map((s) =>
+        s.toLowerCase()
+      );
+      const matches = selectedMatchTerms.some((term) =>
+        articleSubjects.some((subj) => subj.includes(term))
+      );
+      if (!matches) return false;
     }
 
     return true;

@@ -4,7 +4,7 @@
  * Filters are dynamic — only sections relevant to the active SearchType
  * are rendered:
  *
- *   journals : Language
+ *   journals : Field / Subject, Language
  *   books    : Source, Publication Year, Language
  *   articles : Publication Year, Language, License
  *
@@ -14,7 +14,10 @@
 
 import { SlidersHorizontal, Check, ExternalLink } from "lucide-react";
 import type { SearchFilters, SearchType } from "../lib/search";
-import { LANGUAGES, LICENSES, BOOK_SOURCES, YEAR_MIN, YEAR_MAX } from "../data/mockArticles";
+import {
+  LANGUAGES, LICENSES, BOOK_SOURCES, YEAR_MIN, YEAR_MAX,
+  JOURNAL_SUBJECT_GROUPS,
+} from "../data/mockArticles";
 
 interface FilterSidebarProps {
   searchType: SearchType;
@@ -162,6 +165,57 @@ function BookSourceFilter({
   );
 }
 
+// ─── Journal subject / field filter ──────────────────────────────────────────
+// Shows all discipline groups as checkboxes.  Matching is done client-side
+// using substring matching against DOAJ LCC subject terms (see search.ts).
+
+function JournalSubjectFilter({
+  selected,
+  onChange,
+}: {
+  selected: string[];
+  onChange: (next: string[]) => void;
+}) {
+  function toggle(label: string) {
+    const next = selected.includes(label)
+      ? selected.filter((s) => s !== label)
+      : [...selected, label];
+    onChange(next);
+  }
+
+  return (
+    <div className="flex flex-col gap-2.5">
+      {selected.length > 0 && (
+        <button
+          type="button"
+          onClick={() => onChange([])}
+          className="self-start text-[10px] text-primary underline underline-offset-2 hover:opacity-70 transition-opacity mb-0.5"
+        >
+          Clear selection
+        </button>
+      )}
+      {JOURNAL_SUBJECT_GROUPS.map((group) => (
+        <label
+          key={group.label}
+          className="flex items-center gap-2.5 cursor-pointer group"
+        >
+          <input
+            type="checkbox"
+            value={group.label}
+            checked={selected.includes(group.label)}
+            onChange={() => toggle(group.label)}
+            className="accent-primary w-3.5 h-3.5 shrink-0 rounded"
+            data-testid={`filter-subject-${group.label.replace(/[\s&/]+/g, "-").toLowerCase()}`}
+          />
+          <span className="text-sm text-foreground/80 group-hover:text-primary transition-colors">
+            {group.label}
+          </span>
+        </label>
+      ))}
+    </div>
+  );
+}
+
 // ─── Year range filter ────────────────────────────────────────────────────────
 
 function YearRangeFilter({
@@ -244,9 +298,10 @@ export function FilterSidebar({
     onChange({ license: next });
   }
 
-  const showYear    = searchType === "books" || searchType === "articles";
-  const showLicense = searchType === "articles";
-  const showSources = searchType === "books";
+  const showYear     = searchType === "books" || searchType === "articles";
+  const showLicense  = searchType === "articles";
+  const showSources  = searchType === "books";
+  const showSubjects = searchType === "journals";
   const sources     = FOOTER_SOURCE[searchType];
 
   return (
@@ -283,6 +338,16 @@ export function FilterSidebar({
               yearFrom={filters.yearFrom}
               yearTo={filters.yearTo}
               onChange={onChange}
+            />
+          </FilterSection>
+        )}
+
+        {/* ── Journal Field / Subject (journals only) ── */}
+        {showSubjects && (
+          <FilterSection label="Field of Study">
+            <JournalSubjectFilter
+              selected={filters.journalSubjects}
+              onChange={(next) => onChange({ journalSubjects: next })}
             />
           </FilterSection>
         )}
