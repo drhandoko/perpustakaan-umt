@@ -1,17 +1,38 @@
 /**
- * Client-side filtering, sorting, and source management applied on top of API results.
+ * Client-side filtering, sorting, and search-type management.
  *
- * Both DOAJ and Crossref results are fetched server-side by keyword.
- * This module handles:
- *   1. Sidebar filters (year, language, license) — applied locally after fetch
- *   2. Sort order — applied after filtering, purely client-side
- *   3. Source selection — determines which APIs are called in SearchPage
+ * SearchType drives which API is called:
+ *   journals → DOAJ journals endpoint
+ *   books    → DOAB REST API
+ *   articles → Crossref (filtered to journal-article type)
+ *
+ * Filtering and sorting are applied locally on the results already fetched.
  */
 
 import type { Article } from "../data/mockArticles";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// ─── Search type ──────────────────────────────────────────────────────────────
 
+/** Which kind of content the user is searching for. */
+export type SearchType = "journals" | "books" | "articles";
+
+export const SEARCH_TYPE_OPTIONS: { value: SearchType; label: string }[] = [
+  { value: "journals", label: "Journals" },
+  { value: "books",    label: "Books" },
+  { value: "articles", label: "Articles" },
+];
+
+// ─── Filters ──────────────────────────────────────────────────────────────────
+
+/**
+ * All possible filter fields in one flat structure.
+ * Not all fields apply to every SearchType — the sidebar renders only the
+ * relevant ones per type.
+ *
+ *  journals : language[]
+ *  books    : yearFrom, yearTo, language[]
+ *  articles : yearFrom, yearTo, language[], license[]
+ */
 export interface SearchFilters {
   query: string;
   yearFrom: number | "";
@@ -20,18 +41,8 @@ export interface SearchFilters {
   license: string[];
 }
 
-/** Which APIs to query. At least one must be true. */
-export interface SourceSelection {
-  doaj: boolean;
-  crossref: boolean;
-}
+// ─── Sort order ───────────────────────────────────────────────────────────────
 
-/**
- * Client-side sort order applied to the filtered result list.
- *   relevance — preserve the merged API order (DOAJ first, then Crossref)
- *   newest    — descending by year; year-unavailable articles sorted to the end
- *   oldest    — ascending by year; year-unavailable articles sorted to the end
- */
 export type SortOrder = "relevance" | "newest" | "oldest";
 
 export const SORT_OPTIONS: { value: SortOrder; label: string }[] = [
@@ -40,24 +51,20 @@ export const SORT_OPTIONS: { value: SortOrder; label: string }[] = [
   { value: "oldest",    label: "Oldest first" },
 ];
 
-// ─── Source helpers ───────────────────────────────────────────────────────────
-
-export function sourcesAreEqual(a: SourceSelection, b: SourceSelection): boolean {
-  return a.doaj === b.doaj && a.crossref === b.crossref;
-}
+// ─── Deduplication ────────────────────────────────────────────────────────────
 
 /**
  * Merge two Article arrays, deduplicating by DOI.
- * Items earlier in the list take precedence (DOAJ results first, then Crossref).
+ * Items earlier in the list take precedence.
  */
 export function mergeAndDeduplicate(
-  doajArticles: Article[],
-  crossrefArticles: Article[]
+  primary: Article[],
+  secondary: Article[]
 ): Article[] {
   const seen = new Set<string>();
   const merged: Article[] = [];
 
-  for (const article of [...doajArticles, ...crossrefArticles]) {
+  for (const article of [...primary, ...secondary]) {
     const key = article.doi
       ? `doi:${article.doi.toLowerCase()}`
       : `id:${article.id}`;
@@ -73,8 +80,9 @@ export function mergeAndDeduplicate(
 // ─── Filtering ────────────────────────────────────────────────────────────────
 
 /**
- * Apply sidebar filters to an Article array already returned by the API(s).
- * Year-0 articles (year not available) pass the year filter automatically.
+ * Apply sidebar filters to an Article array.
+ * Year-0 records (year not available) always pass the year filter.
+ * Empty arrays for language / license mean "show all".
  */
 export function applyFilters(
   articles: Article[],
@@ -83,17 +91,14 @@ export function applyFilters(
   const { yearFrom, yearTo, language, license } = filters;
 
   return articles.filter((article) => {
-    // Year range — articles with year=0 (unavailable) always pass
     if (article.year !== 0) {
       if (yearFrom !== "" && article.year < yearFrom) return false;
       if (yearTo   !== "" && article.year > yearTo)   return false;
     }
 
-    // Language filter — empty array means "all languages"
     if (language.length > 0 && !language.includes(article.language))
       return false;
 
-    // License filter — empty array means "all licenses"
     if (license.length > 0) {
       if (!article.license || !license.includes(article.license)) return false;
     }
@@ -106,8 +111,8 @@ export function applyFilters(
 
 /**
  * Sort an Article array by the requested order.
- * Returns a new array; the input is never mutated.
- * Articles with year=0 (unavailable) are always placed at the end.
+ * Returns a new array; input is never mutated.
+ * Year-0 records are always placed last.
  */
 export function applySortOrder(
   articles: Article[],
@@ -116,11 +121,9 @@ export function applySortOrder(
   if (sort === "relevance") return articles;
 
   return [...articles].sort((a, b) => {
-    // Push year-unavailable articles to the bottom regardless of sort direction
     if (a.year === 0 && b.year === 0) return 0;
     if (a.year === 0) return 1;
     if (b.year === 0) return -1;
-
     return sort === "newest" ? b.year - a.year : a.year - b.year;
   });
 }

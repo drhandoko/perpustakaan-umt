@@ -1,0 +1,53 @@
+Update this project to support three search modes: Journals, Books, and Articles.
+
+Goal:
+This is a campus-branded open-access discovery portal. It must search metadata only and link users to the original source. It must not host PDFs, mirror content, or embed publisher pages in iframes.
+
+Interface changes:
+- Keep the existing clean academic design
+- Add a Search Type dropdown next to or above the search box
+- The dropdown options must be:
+  - Journals
+  - Books
+  - Articles
+- Keep Search and Reset buttons
+- Keep the filters sidebar
+- Keep the results cards layout
+
+Behavior:
+- If Search Type is “Journals”, search DOAJ
+- If Search Type is “Books”, search DOAB
+- If Search Type is “Articles”, search Crossref and filter to journal articles only
+- Open source links in a new tab
+- Do not embed external pages
+
+Data handling:
+- Create separate fetch functions for DOAJ, DOAB, and Crossref
+- Normalize all results into a common structure before rendering
+- Use a field like contentType with values: journal, book, article
+- Show a badge on each result card indicating whether it is a Journal, Book, or Article
+- If a field is missing, show “Not available”
+
+Result card requirements:
+- For journals: show title, publisher, subject, language if available, and Open Journal button
+- For books: show title, author/editor, publisher, year, language/license if available, and Open Book button
+- For articles: show title, authors, journal, year, DOI, source, and Open Article button
+
+Filter requirements:
+- Keep common filters where possible
+- Make filters dynamic so they are relevant to the selected search type
+- Example:
+  - Journals: language, country, subject
+  - Books: year, language, publisher
+  - Articles: year, source, license
+
+Code requirements:
+- Keep the code readable and well-commented
+- Separate code clearly into:
+  - UI setup
+  - API fetch functions
+  - normalization functions
+  - filtering
+  - rendering
+- Keep the project portable for later hosting outside Replit
+- Avoid unnecessary dependencies

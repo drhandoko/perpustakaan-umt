@@ -1,29 +1,30 @@
 /**
  * Left sidebar filter panel.
  *
- * Sections:
- *   - Source (DOAJ / Crossref checkboxes) — controls which APIs are called
- *   - Publication Year range
- *   - Language radio buttons
- *   - License radio buttons
+ * Filters are dynamic — only sections relevant to the active SearchType
+ * are rendered:
+ *
+ *   journals : Language
+ *   books    : Publication Year, Language
+ *   articles : Publication Year, Language, License
  *
  * All values are "pending" until the user clicks "Apply Filters".
- * The dirty indicator fires as soon as any pending value differs from the
- * last committed (applied) snapshot.
+ * The dirty indicator fires whenever pending differs from applied.
  */
 
 import { SlidersHorizontal, Check } from "lucide-react";
-import type { SearchFilters, SourceSelection } from "../lib/search";
+import type { SearchFilters, SearchType } from "../lib/search";
 import { LANGUAGES, LICENSES, YEAR_MIN, YEAR_MAX } from "../data/mockArticles";
 
 interface FilterSidebarProps {
+  searchType: SearchType;
   filters: SearchFilters;
-  sources: SourceSelection;
   dirty: boolean;
   onChange: (updated: Partial<SearchFilters>) => void;
-  onSourceChange: (updated: Partial<SourceSelection>) => void;
   onApply: () => void;
 }
+
+// ─── Generic UI primitives ────────────────────────────────────────────────────
 
 function FilterSection({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -36,22 +37,143 @@ function FilterSection({ label, children }: { label: string; children: React.Rea
   );
 }
 
+// ─── Reusable multi-select checkbox list ──────────────────────────────────────
+
+function CheckboxList({
+  options,
+  selected,
+  onToggle,
+  onClear,
+  testIdPrefix,
+}: {
+  options: string[];
+  selected: string[];
+  onToggle: (value: string) => void;
+  onClear: () => void;
+  testIdPrefix: string;
+}) {
+  return (
+    <div className="flex flex-col gap-2.5">
+      {selected.length > 0 && (
+        <button
+          type="button"
+          onClick={onClear}
+          className="self-start text-[10px] text-primary underline underline-offset-2 hover:opacity-70 transition-opacity mb-0.5"
+        >
+          Clear selection
+        </button>
+      )}
+      {options.map((opt) => {
+        const checked = selected.includes(opt);
+        return (
+          <label key={opt} className="flex items-center gap-2.5 cursor-pointer group">
+            <input
+              type="checkbox"
+              value={opt}
+              checked={checked}
+              onChange={() => onToggle(opt)}
+              className="accent-primary w-3.5 h-3.5 shrink-0 rounded"
+              data-testid={`${testIdPrefix}-${opt.replace(/\s+/g, "-").toLowerCase()}`}
+            />
+            <span className="text-sm text-foreground/80 group-hover:text-primary transition-colors">
+              {opt}
+            </span>
+          </label>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── Year range filter ────────────────────────────────────────────────────────
+
+function YearRangeFilter({
+  yearFrom,
+  yearTo,
+  onChange,
+}: {
+  yearFrom: number | "";
+  yearTo: number | "";
+  onChange: (update: Partial<Pick<SearchFilters, "yearFrom" | "yearTo">>) => void;
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <div className="flex flex-col gap-1 flex-1">
+        <label htmlFor="year-from" className="text-[11px] text-muted-foreground font-medium">
+          From
+        </label>
+        <input
+          id="year-from"
+          type="number"
+          min={YEAR_MIN}
+          max={YEAR_MAX}
+          placeholder={String(YEAR_MIN)}
+          value={yearFrom}
+          onChange={(e) =>
+            onChange({ yearFrom: e.target.value === "" ? "" : Number(e.target.value) })
+          }
+          className="w-full text-sm bg-card border border-border rounded-lg px-2.5 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
+          data-testid="filter-year-from"
+        />
+      </div>
+      <span className="text-muted-foreground mt-5 text-sm">–</span>
+      <div className="flex flex-col gap-1 flex-1">
+        <label htmlFor="year-to" className="text-[11px] text-muted-foreground font-medium">
+          To
+        </label>
+        <input
+          id="year-to"
+          type="number"
+          min={YEAR_MIN}
+          max={YEAR_MAX}
+          placeholder={String(YEAR_MAX)}
+          value={yearTo}
+          onChange={(e) =>
+            onChange({ yearTo: e.target.value === "" ? "" : Number(e.target.value) })
+          }
+          className="w-full text-sm bg-card border border-border rounded-lg px-2.5 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
+          data-testid="filter-year-to"
+        />
+      </div>
+    </div>
+  );
+}
+
+// ─── Source info per search type ──────────────────────────────────────────────
+
+const SOURCE_INFO: Record<SearchType, { label: string; href: string }[]> = {
+  journals: [{ label: "DOAJ", href: "https://doaj.org" }],
+  books:    [{ label: "DOAB", href: "https://directory.doabooks.org" }],
+  articles: [{ label: "Crossref", href: "https://www.crossref.org" }],
+};
+
+// ─── Main component ───────────────────────────────────────────────────────────
+
 export function FilterSidebar({
+  searchType,
   filters,
-  sources,
   dirty,
   onChange,
-  onSourceChange,
   onApply,
 }: FilterSidebarProps) {
-  const atLeastOneSource = sources.doaj || sources.crossref;
 
-  function handleSourceToggle(key: keyof SourceSelection) {
-    const next = { ...sources, [key]: !sources[key] };
-    // Prevent unchecking the last selected source
-    if (!next.doaj && !next.crossref) return;
-    onSourceChange({ [key]: !sources[key] });
+  function toggleLanguage(lang: string) {
+    const next = filters.language.includes(lang)
+      ? filters.language.filter((l) => l !== lang)
+      : [...filters.language, lang];
+    onChange({ language: next });
   }
+
+  function toggleLicense(lic: string) {
+    const next = filters.license.includes(lic)
+      ? filters.license.filter((l) => l !== lic)
+      : [...filters.license, lic];
+    onChange({ license: next });
+  }
+
+  const showYear    = searchType === "books" || searchType === "articles";
+  const showLicense = searchType === "articles";
+  const sources     = SOURCE_INFO[searchType];
 
   return (
     <aside
@@ -59,7 +181,7 @@ export function FilterSidebar({
       data-testid="filter-sidebar"
       aria-label="Search filters"
     >
-      {/* Sidebar title */}
+      {/* Header */}
       <div className="flex items-center gap-2.5 px-6 py-5 border-b border-sidebar-border">
         <SlidersHorizontal className="w-4 h-4 text-primary" aria-hidden="true" />
         <span className="text-sm font-semibold text-foreground tracking-tight">
@@ -67,209 +189,62 @@ export function FilterSidebar({
         </span>
       </div>
 
-      {/* Scrollable filter area */}
+      {/* Scrollable filter content */}
       <div className="flex-1 overflow-y-auto px-6">
 
-        {/* ── Source ── */}
-        <FilterSection label="Source">
-          <div className="flex flex-col gap-2.5">
-            {/* DOAJ */}
-            <label
-              className="flex items-start gap-2.5 cursor-pointer group"
-              data-testid="filter-source-doaj-label"
-            >
-              <input
-                type="checkbox"
-                checked={sources.doaj}
-                onChange={() => handleSourceToggle("doaj")}
-                disabled={sources.doaj && !sources.crossref}
-                className="accent-primary w-3.5 h-3.5 mt-0.5 shrink-0"
-                data-testid="filter-source-doaj"
-                aria-label="Include DOAJ results"
-              />
-              <span className="flex flex-col gap-0.5">
-                <span className="text-sm font-medium text-foreground/80 group-hover:text-primary transition-colors leading-tight">
-                  DOAJ
-                </span>
-                <span className="text-[10px] text-muted-foreground/60 leading-tight">
-                  Open-access curated index
-                </span>
-              </span>
-            </label>
+        {/* ── Publication Year (books + articles only) ── */}
+        {showYear && (
+          <FilterSection label="Publication Year">
+            <YearRangeFilter
+              yearFrom={filters.yearFrom}
+              yearTo={filters.yearTo}
+              onChange={onChange}
+            />
+          </FilterSection>
+        )}
 
-            {/* Crossref */}
-            <label
-              className="flex items-start gap-2.5 cursor-pointer group"
-              data-testid="filter-source-crossref-label"
-            >
-              <input
-                type="checkbox"
-                checked={sources.crossref}
-                onChange={() => handleSourceToggle("crossref")}
-                disabled={sources.crossref && !sources.doaj}
-                className="accent-primary w-3.5 h-3.5 mt-0.5 shrink-0"
-                data-testid="filter-source-crossref"
-                aria-label="Include Crossref results"
-              />
-              <span className="flex flex-col gap-0.5">
-                <span className="text-sm font-medium text-foreground/80 group-hover:text-primary transition-colors leading-tight">
-                  Crossref
-                </span>
-                <span className="text-[10px] text-muted-foreground/60 leading-tight">
-                  Scholarly metadata registry
-                </span>
-              </span>
-            </label>
-
-            {!atLeastOneSource && (
-              <p className="text-[10px] text-rose-500 leading-snug">
-                At least one source must be selected.
-              </p>
-            )}
-          </div>
-        </FilterSection>
-
-        {/* ── Publication Year ── */}
-        <FilterSection label="Publication Year">
-          <div className="flex items-center gap-2">
-            <div className="flex flex-col gap-1 flex-1">
-              <label htmlFor="year-from" className="text-[11px] text-muted-foreground font-medium">
-                From
-              </label>
-              <input
-                id="year-from"
-                type="number"
-                min={YEAR_MIN}
-                max={YEAR_MAX}
-                placeholder={String(YEAR_MIN)}
-                value={filters.yearFrom}
-                onChange={(e) =>
-                  onChange({ yearFrom: e.target.value === "" ? "" : Number(e.target.value) })
-                }
-                className="w-full text-sm bg-card border border-border rounded-lg px-2.5 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
-                data-testid="filter-year-from"
-              />
-            </div>
-            <span className="text-muted-foreground mt-5 text-sm">–</span>
-            <div className="flex flex-col gap-1 flex-1">
-              <label htmlFor="year-to" className="text-[11px] text-muted-foreground font-medium">
-                To
-              </label>
-              <input
-                id="year-to"
-                type="number"
-                min={YEAR_MIN}
-                max={YEAR_MAX}
-                placeholder={String(YEAR_MAX)}
-                value={filters.yearTo}
-                onChange={(e) =>
-                  onChange({ yearTo: e.target.value === "" ? "" : Number(e.target.value) })
-                }
-                className="w-full text-sm bg-card border border-border rounded-lg px-2.5 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
-                data-testid="filter-year-to"
-              />
-            </div>
-          </div>
-        </FilterSection>
-
-        {/* ── Language ── */}
+        {/* ── Language (all types) ── */}
         <FilterSection label="Language">
-          <div className="flex flex-col gap-2.5">
-            {filters.language.length > 0 && (
-              <button
-                type="button"
-                onClick={() => onChange({ language: [] })}
-                className="self-start text-[10px] text-primary underline underline-offset-2 hover:opacity-70 transition-opacity mb-0.5"
-              >
-                Clear selection
-              </button>
-            )}
-            {LANGUAGES.map((lang) => {
-              const checked = filters.language.includes(lang);
-              return (
-                <label key={lang} className="flex items-center gap-2.5 cursor-pointer group">
-                  <input
-                    type="checkbox"
-                    value={lang}
-                    checked={checked}
-                    onChange={() => {
-                      const next = checked
-                        ? filters.language.filter((l) => l !== lang)
-                        : [...filters.language, lang];
-                      onChange({ language: next });
-                    }}
-                    className="accent-primary w-3.5 h-3.5 shrink-0 rounded"
-                    data-testid={`filter-language-${lang.toLowerCase()}`}
-                  />
-                  <span className="text-sm text-foreground/80 group-hover:text-primary transition-colors">
-                    {lang}
-                  </span>
-                </label>
-              );
-            })}
-          </div>
+          <CheckboxList
+            options={LANGUAGES}
+            selected={filters.language}
+            onToggle={toggleLanguage}
+            onClear={() => onChange({ language: [] })}
+            testIdPrefix="filter-language"
+          />
         </FilterSection>
 
-        {/* ── License ── */}
-        <FilterSection label="License">
-          <div className="flex flex-col gap-2.5">
-            {filters.license.length > 0 && (
-              <button
-                type="button"
-                onClick={() => onChange({ license: [] })}
-                className="self-start text-[10px] text-primary underline underline-offset-2 hover:opacity-70 transition-opacity mb-0.5"
-              >
-                Clear selection
-              </button>
-            )}
-            {LICENSES.map((lic) => {
-              const checked = filters.license.includes(lic);
-              return (
-                <label key={lic} className="flex items-center gap-2.5 cursor-pointer group">
-                  <input
-                    type="checkbox"
-                    value={lic}
-                    checked={checked}
-                    onChange={() => {
-                      const next = checked
-                        ? filters.license.filter((l) => l !== lic)
-                        : [...filters.license, lic];
-                      onChange({ license: next });
-                    }}
-                    className="accent-primary w-3.5 h-3.5 shrink-0 rounded"
-                    data-testid={`filter-license-${lic.replace(/\s+/g, "-").toLowerCase()}`}
-                  />
-                  <span className="text-sm text-foreground/80 group-hover:text-primary transition-colors">
-                    {lic}
-                  </span>
-                </label>
-              );
-            })}
-          </div>
-        </FilterSection>
+        {/* ── License (articles only) ── */}
+        {showLicense && (
+          <FilterSection label="License">
+            <CheckboxList
+              options={LICENSES}
+              selected={filters.license}
+              onToggle={toggleLicense}
+              onClear={() => onChange({ license: [] })}
+              testIdPrefix="filter-license"
+            />
+          </FilterSection>
+        )}
 
-        {/* Footer note + Apply Filters */}
+        {/* ── Footer: source links + Apply button ── */}
         <div className="py-5 flex flex-col gap-4">
           <p className="text-[11px] text-muted-foreground/60 leading-relaxed">
-            Results are fetched from{" "}
-            <a
-              href="https://doaj.org"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline underline-offset-2 hover:text-primary transition-colors"
-            >
-              DOAJ
-            </a>{" "}
-            and{" "}
-            <a
-              href="https://www.crossref.org"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline underline-offset-2 hover:text-primary transition-colors"
-            >
-              Crossref
-            </a>{" "}
-            public APIs. No API key required.
+            Results fetched from{" "}
+            {sources.map((s, i) => (
+              <span key={s.href}>
+                <a
+                  href={s.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline underline-offset-2 hover:text-primary transition-colors"
+                >
+                  {s.label}
+                </a>
+                {i < sources.length - 1 ? " and " : ""}
+              </span>
+            ))}
+            {" "}public API. No API key required.
           </p>
 
           {dirty && (

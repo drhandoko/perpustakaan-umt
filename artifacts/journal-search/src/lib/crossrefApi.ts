@@ -2,15 +2,10 @@
  * Crossref API client.
  *
  * Docs: https://api.crossref.org/swagger-ui/index.html
- * No API key required. We include a `mailto` parameter per the
- * Crossref "polite pool" recommendation so queries are routed
- * to the higher-priority pool.
+ * No API key required. Includes a `mailto` parameter for the polite pool.
  *
- * Endpoint used:
- *   GET https://api.crossref.org/works?query={query}&rows=25&mailto=library@murniteguh.ac.id
- *
- * Raw Crossref works are passed through the shared normalizers in
- * src/lib/normalize.ts before being returned as Article values.
+ * Used for SearchType === "articles":
+ *   Adds filter=type:journal-article to restrict results to peer-reviewed articles.
  */
 
 import type { Article } from "../data/mockArticles";
@@ -29,7 +24,7 @@ import {
 interface CrossrefAuthor {
   given?: string;
   family?: string;
-  name?: string;     // corporate / organisation author
+  name?: string;
   sequence?: string;
 }
 
@@ -45,9 +40,7 @@ interface CrossrefLicense {
   "delay-in-days"?: number;
 }
 
-interface CrossrefDateParts {
-  "date-parts": number[][];
-}
+interface CrossrefDateParts { "date-parts": number[][]; }
 
 interface CrossrefWork {
   DOI?: string;
@@ -62,6 +55,7 @@ interface CrossrefWork {
   license?: CrossrefLicense[];
   link?: CrossrefLink[];
   URL?: string;
+  type?: string;
 }
 
 interface CrossrefResponse {
@@ -72,9 +66,8 @@ interface CrossrefResponse {
   };
 }
 
-// ─── Helpers specific to Crossref's data shape ────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
-/** Extract the publication year from whichever date field is present. */
 function resolveYear(work: CrossrefWork): number {
   const parts =
     work.published?.["date-parts"] ??
@@ -85,21 +78,12 @@ function resolveYear(work: CrossrefWork): number {
   return typeof year === "number" && year > 1000 ? year : 0;
 }
 
-/**
- * Pick the best license from Crossref's license array.
- * Prefers the VOR (version of record) over AM (accepted manuscript).
- */
 function pickLicenseUrl(licenses: CrossrefLicense[] | undefined): string | null {
   if (!licenses || licenses.length === 0) return null;
   const vor = licenses.find((l) => l["content-version"] === "vor");
   return (vor ?? licenses[0]).URL ?? null;
 }
 
-/**
- * Find a direct PDF link in Crossref's link array.
- * Prefers `text-mining` application since those are the most reliable
- * machine-readable links; falls back to any PDF content-type link.
- */
 function pickPdfUrl(links: CrossrefLink[]): string | null {
   const textMiningPdf = links.find(
     (l) =>
@@ -107,7 +91,6 @@ function pickPdfUrl(links: CrossrefLink[]): string | null {
       l["content-type"]?.toLowerCase() === "application/pdf"
   );
   if (textMiningPdf) return textMiningPdf.URL;
-
   const anyPdf = links.find(
     (l) => l["content-type"]?.toLowerCase() === "application/pdf"
   );
@@ -118,18 +101,16 @@ function pickPdfUrl(links: CrossrefLink[]): string | null {
 
 function mapWork(work: CrossrefWork, index: number): Article {
   const doi = normalizeDoi(work.DOI);
-
   const sourceUrl = doiToUrl(doi) ?? work.URL ?? "https://search.crossref.org";
-
   const links  = work.link ?? [];
   const pdfUrl = pickPdfUrl(links);
-
   const authors = (work.author ?? [])
     .map(formatAuthorName)
     .filter((n): n is string => n !== null);
 
   return {
     id: doi ? `crossref-${doi}` : `crossref-${index}`,
+    contentType: "article",
     title: work.title?.[0] || NOT_AVAILABLE,
     authors: authors.length > 0 ? authors : [NOT_AVAILABLE],
     journal: work["container-title"]?.[0] || NOT_AVAILABLE,
@@ -152,13 +133,8 @@ export interface CrossrefSearchResult {
 }
 
 /**
- * Search Crossref for works matching `query`.
- *
- * @param query     Free-text keyword(s)
- * @param pageSize  Max results to return (default 25)
- * @param page      1-based page number (default 1)
- *
- * Throws a descriptive Error on network failure or non-200 response.
+ * Search Crossref for **journal articles** matching `query`.
+ * Applies `filter=type:journal-article` to exclude books, datasets, etc.
  */
 export async function searchCrossref(
   query: string,
@@ -170,6 +146,7 @@ export async function searchCrossref(
     query: query.trim(),
     rows: String(pageSize),
     offset: String(offset),
+    filter: "type:journal-article",
     mailto: "library@murniteguh.ac.id",
   });
   const url = `https://api.crossref.org/works?${params.toString()}`;
@@ -178,15 +155,11 @@ export async function searchCrossref(
   try {
     response = await fetch(url, { headers: { Accept: "application/json" } });
   } catch {
-    throw new Error(
-      "Could not reach the Crossref server. Please check your connection and try again."
-    );
+    throw new Error("Could not reach the Crossref server. Please check your connection.");
   }
 
   if (!response.ok) {
-    throw new Error(
-      `Crossref returned an error (HTTP ${response.status}). Please try again shortly.`
-    );
+    throw new Error(`Crossref returned an error (HTTP ${response.status}).`);
   }
 
   const json: CrossrefResponse = await response.json();
