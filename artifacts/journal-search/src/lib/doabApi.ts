@@ -1,16 +1,14 @@
 /**
- * DOAB (Directory of Open Access Books) API client.
+ * Book search via Crossref API.
  *
- * Uses the DSpace REST API exposed by DOAB:
- *   GET https://directory.doabooks.org/rest/search
- *       ?query={q}&expand=metadata&limit={n}&offset={n}
+ * DOAB's DSpace REST API does not send CORS headers, so it cannot be called
+ * directly from a browser. Crossref carries a large catalogue of academic
+ * monographs, edited volumes, and reference books with the same reliable
+ * open API we use for articles.
  *
- * No API key required.
- * Response: array of DSpace Item objects, each with a `metadata` array of
- * { key, value, language } objects.
+ * Filter applied: type:book,type:monograph,type:edited-book,type:reference-book
  *
- * Total count: DSpace's search endpoint does not return a total, so we
- * derive a conservative estimate from the results length.
+ * Docs: https://api.crossref.org/swagger-ui/index.html
  */
 
 import type { Article } from "../data/mockArticles";
@@ -19,101 +17,103 @@ import {
   normalizeLicense,
   normalizeDoi,
   doiToUrl,
+  stripMarkup,
+  formatAuthorName,
   NOT_AVAILABLE,
 } from "./normalize";
 
-// ─── Raw DSpace types ─────────────────────────────────────────────────────────
+// ─── Raw Crossref types (book subset) ────────────────────────────────────────
 
-interface DSpaceMetadataEntry {
-  key: string;
-  value: string;
-  language?: string | null;
+interface CrossrefAuthor {
+  given?: string;
+  family?: string;
+  name?: string;
+  sequence?: string;
 }
 
-interface DSpaceItem {
-  id?: number;
-  name?: string;
-  handle?: string;
+interface CrossrefLicense {
+  URL: string;
+  "content-version"?: string;
+}
+
+interface CrossrefDateParts { "date-parts": number[][]; }
+
+interface CrossrefWork {
+  DOI?: string;
+  title?: string[];
+  "short-title"?: string[];
+  author?: CrossrefAuthor[];
+  editor?: CrossrefAuthor[];
+  publisher?: string;
+  "container-title"?: string[];
+  published?: CrossrefDateParts;
+  "published-print"?: CrossrefDateParts;
+  "published-online"?: CrossrefDateParts;
+  abstract?: string;
+  language?: string;
+  license?: CrossrefLicense[];
+  URL?: string;
   type?: string;
-  metadata?: DSpaceMetadataEntry[];
+  "number-of-pages"?: number;
+  subject?: string[];
+}
+
+interface CrossrefResponse {
+  status: string;
+  message: {
+    "total-results": number;
+    items: CrossrefWork[];
+  };
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-/** Return the first metadata value for `key`, or undefined. */
-function getMeta(metadata: DSpaceMetadataEntry[], key: string): string | undefined {
-  return metadata.find((m) => m.key === key)?.value || undefined;
+function resolveYear(work: CrossrefWork): number {
+  const parts =
+    work.published?.["date-parts"] ??
+    work["published-print"]?.["date-parts"] ??
+    work["published-online"]?.["date-parts"] ??
+    [];
+  const year = parts?.[0]?.[0];
+  return typeof year === "number" && year > 1000 ? year : 0;
 }
 
-/** Return all metadata values for `key`. */
-function getAllMeta(metadata: DSpaceMetadataEntry[], key: string): string[] {
-  return metadata
-    .filter((m) => m.key === key && m.value)
-    .map((m) => m.value);
+function pickLicenseUrl(licenses: CrossrefLicense[] | undefined): string | null {
+  if (!licenses || licenses.length === 0) return null;
+  const vor = licenses.find((l) => l["content-version"] === "vor");
+  return (vor ?? licenses[0]).URL ?? null;
 }
 
 // ─── Mapping ──────────────────────────────────────────────────────────────────
 
-function mapDoabBook(raw: DSpaceItem, index: number): Article {
-  const meta = raw.metadata ?? [];
+function mapBook(work: CrossrefWork, index: number): Article {
+  const doi = normalizeDoi(work.DOI);
+  const sourceUrl = doiToUrl(doi) ?? work.URL ?? "https://search.crossref.org";
 
-  const title = getMeta(meta, "dc.title") || raw.name || NOT_AVAILABLE;
+  // Prefer listed authors; fall back to editors
+  const rawContributors = work.author?.length ? work.author : (work.editor ?? []);
+  const contributors = rawContributors
+    .map(formatAuthorName)
+    .filter((n): n is string => n !== null);
 
-  // Authors: prefer dc.contributor.author, fall back to dc.contributor.editor
-  const authorValues = getAllMeta(meta, "dc.contributor.author");
-  const editorValues = getAllMeta(meta, "dc.contributor.editor");
-  const contributors = authorValues.length > 0 ? authorValues : editorValues;
-  const authors = contributors.length > 0 ? contributors : [NOT_AVAILABLE];
-
-  const publisherName = getMeta(meta, "dc.publisher") || NOT_AVAILABLE;
-
-  // Year — dc.date.issued or dc.date
-  const dateRaw = getMeta(meta, "dc.date.issued") || getMeta(meta, "dc.date");
-  const year = dateRaw ? parseInt(dateRaw.slice(0, 4), 10) || 0 : 0;
-
-  // Language — DOAB stores full names ("English") or codes
-  const langRaw = getMeta(meta, "dc.language") || getMeta(meta, "dc.language.iso");
-  const language = langRaw
-    ? (normalizeLanguageCode(langRaw) !== NOT_AVAILABLE
-        ? normalizeLanguageCode(langRaw)
-        : langRaw)
-    : NOT_AVAILABLE;
-
-  // License
-  const licenseRaw =
-    getMeta(meta, "dc.rights") ||
-    getMeta(meta, "dc.rights.license") ||
-    getMeta(meta, "dc.license");
-
-  // DOI — may be stored as full URL or bare DOI
-  const doiRaw =
-    getMeta(meta, "dc.identifier.doi") ||
-    getAllMeta(meta, "dc.identifier").find((v) => v.includes("doi"));
-  const doi = normalizeDoi(doiRaw);
-
-  // Source URL: doi.org link preferred, else DOAB handle page
-  const handle = raw.handle;
-  const sourceUrl =
-    doiToUrl(doi) ||
-    (handle ? `https://directory.doabooks.org/handle/${handle}` : "https://directory.doabooks.org");
-
-  const abstract = getMeta(meta, "dc.description.abstract") || undefined;
+  const publisherName = work.publisher || NOT_AVAILABLE;
 
   return {
-    id: raw.id != null ? `doab-${raw.id}` : `doab-${index}`,
+    id: doi ? `book-${doi}` : `book-${index}`,
     contentType: "book",
-    title,
-    authors,
+    title: work.title?.[0] || NOT_AVAILABLE,
+    authors: contributors.length > 0 ? contributors : [NOT_AVAILABLE],
     journal: publisherName,
-    year,
+    year: resolveYear(work),
     doi,
     sourceUrl,
     pdfUrl: null,
-    source: "DOAB",
-    license: normalizeLicense(licenseRaw),
-    language,
-    abstract,
+    source: "Crossref",
+    license: normalizeLicense(pickLicenseUrl(work.license)),
+    language: normalizeLanguageCode(work.language),
+    abstract: stripMarkup(work.abstract),
     publisher: publisherName,
+    subjects: work.subject?.slice(0, 5),
   };
 }
 
@@ -125,10 +125,11 @@ export interface DoabSearchResult {
 }
 
 /**
- * Search DOAB for open-access **books** matching `query`.
+ * Search for open-access **books** matching `query`.
+ * Sourced from Crossref, filtered to book-type works.
  *
  * @param query     Free-text keyword(s)
- * @param pageSize  Max results per page (DOAB allows up to 100)
+ * @param pageSize  Results per page (max 100)
  * @param page      1-based page number
  */
 export async function searchDoab(
@@ -139,36 +140,28 @@ export async function searchDoab(
   const offset = (page - 1) * pageSize;
   const params = new URLSearchParams({
     query: query.trim(),
-    expand: "metadata",
-    limit: String(pageSize),
+    rows: String(pageSize),
     offset: String(offset),
+    filter: "type:book,type:monograph,type:edited-book,type:reference-book",
+    mailto: "library@murniteguh.ac.id",
   });
-  const url = `https://directory.doabooks.org/rest/search?${params.toString()}`;
+  const url = `https://api.crossref.org/works?${params.toString()}`;
 
   let response: Response;
   try {
     response = await fetch(url, { headers: { Accept: "application/json" } });
   } catch {
-    throw new Error("Could not reach the DOAB server. Please check your connection.");
+    throw new Error("Could not reach the Crossref server. Please check your connection.");
   }
 
   if (!response.ok) {
-    throw new Error(`DOAB returned an error (HTTP ${response.status}).`);
+    throw new Error(`Book search returned an error (HTTP ${response.status}).`);
   }
 
-  const json: DSpaceItem[] | { items?: DSpaceItem[] } = await response.json();
-
-  // DSpace can return either a bare array or an object with an items field
-  const items: DSpaceItem[] = Array.isArray(json)
-    ? json
-    : (json as { items?: DSpaceItem[] }).items ?? [];
-
-  const articles = items.map((item, i) => mapDoabBook(item, i));
-
-  // DSpace search doesn't return a total — estimate conservatively so the
-  // pagination UI shows a "Next" button when a full page was returned.
-  const hasMore = items.length === pageSize;
-  const total   = offset + items.length + (hasMore ? pageSize : 0);
+  const json: CrossrefResponse = await response.json();
+  const items   = json.message?.items ?? [];
+  const total   = json.message?.["total-results"] ?? 0;
+  const articles = items.map((item, i) => mapBook(item, i));
 
   return { articles, total };
 }

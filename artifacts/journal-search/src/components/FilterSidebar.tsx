@@ -142,8 +142,8 @@ function YearRangeFilter({
 // ─── Source info per search type ──────────────────────────────────────────────
 
 const SOURCE_INFO: Record<SearchType, { label: string; href: string }[]> = {
-  journals: [{ label: "DOAJ", href: "https://doaj.org" }],
-  books:    [{ label: "DOAB", href: "https://directory.doabooks.org" }],
+  journals: [{ label: "DOAJ",     href: "https://doaj.org" }],
+  books:    [{ label: "Crossref", href: "https://www.crossref.org" }],
   articles: [{ label: "Crossref", href: "https://www.crossref.org" }],
 };
 
