@@ -301,3 +301,44 @@
     inset: -1px;
   }
 }
+
+/* ── Mobile browser compatibility ──────────────────────────────────────────── */
+
+/*
+ * Prevent any element from causing horizontal scroll on mobile.
+ * Mobile browsers (iOS Safari, Chrome Android, Samsung Internet) show a
+ * horizontal scrollbar if ANY content is even 1px wider than the viewport.
+ */
+html,
+body {
+  overflow-x: hidden;
+  /* Use dynamic viewport height so the layout fills the screen correctly
+     even when the mobile browser's address bar is visible or hidden. */
+  min-height: 100dvh;
+}
+
+/*
+ * Ensure tap targets are large enough on touch screens.
+ * Buttons and links that are too small are hard to tap accurately.
+ */
+button,
+a {
+  touch-action: manipulation;
+}
+
+/*
+ * Smooth momentum scrolling on iOS for any overflow-y:auto container.
+ * Without this, scrolling inside containers (like the filter drawer) feels
+ * stiff on iOS Safari.
+ */
+.overflow-y-auto,
+[style*="overflow-y: auto"],
+[style*="overflow: auto"] {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Prevent font-size inflation on landscape rotation in iOS Safari */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}

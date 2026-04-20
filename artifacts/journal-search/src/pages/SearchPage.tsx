@@ -99,7 +99,6 @@ export function SearchPage() {
   const lastQueryRef   = useRef<string>("");
   const lastTypeRef    = useRef<SearchType>("articles");
   const lastSourcesRef = useRef<string[]>(DEFAULT_BOOK_SOURCES);
-  const contentDivRef  = useRef<HTMLDivElement>(null);
 
   // ── Core search executor ──────────────────────────────────────────────────────
   const runSearch = useCallback(
@@ -117,7 +116,7 @@ export function SearchPage() {
       lastTypeRef.current    = type;
       lastSourcesRef.current = activeSources;
 
-      contentDivRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+      window.scrollTo({ top: 0, behavior: "smooth" });
 
       try {
         let articles: Article[];
@@ -241,8 +240,8 @@ export function SearchPage() {
   const activeFilterCount = countActiveFilters(appliedFilters);
 
   return (
-    <main className="flex-1 flex min-h-0" data-testid="search-page">
-      {/* Sidebar — always visible on desktop, drawer on mobile */}
+    <main className="flex-1 flex w-full" data-testid="search-page">
+      {/* Sidebar — sticky column on desktop, slide-in drawer on mobile */}
       <FilterSidebar
         searchType={searchType}
         filters={{ ...pendingFilters, query: inputQuery }}
@@ -253,13 +252,10 @@ export function SearchPage() {
         onClose={() => setSidebarOpen(false)}
       />
 
-      {/* Main content column */}
-      <div
-        ref={contentDivRef}
-        className="flex-1 flex flex-col min-w-0 overflow-y-auto bg-background"
-      >
-        {/* Sticky search area */}
-        <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b border-border px-4 sm:px-8 py-4 sm:py-6">
+      {/* Main content — natural document scroll (no nested overflow-y-auto) */}
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Sticky search area — sticks to the top of the document */}
+        <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm border-b border-border px-4 sm:px-8 py-4 sm:py-6">
           {/* Mobile filter toggle */}
           <div className="flex items-center gap-3 mb-3 md:hidden">
             <button

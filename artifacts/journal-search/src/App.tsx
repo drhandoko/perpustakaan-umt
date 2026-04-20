@@ -15,11 +15,10 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        {/* Full-height flex column layout */}
+        {/* Full-height flex column layout — natural document scroll for mobile compat */}
         <div className="min-h-screen flex flex-col bg-background">
           <Header />
-          {/* SearchPage fills remaining height */}
-          <div className="flex flex-1 overflow-hidden">
+          <div className="flex flex-1">
             <SearchPage />
           </div>
         </div>
