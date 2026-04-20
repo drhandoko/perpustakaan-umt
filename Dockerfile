@@ -15,7 +15,7 @@ COPY lib/api-zod/package.json          ./lib/api-zod/
 COPY lib/db/package.json               ./lib/db/
 COPY artifacts/api-server/package.json     ./artifacts/api-server/
 COPY artifacts/journal-search/package.json ./artifacts/journal-search/
-COPY artifacts/mockup-sandbox/package.json ./artifacts/mockup-sandbox/ 2>/dev/null || true
+
 
 # Install all dependencies (uses frozen lockfile for reproducible builds)
 RUN pnpm install --frozen-lockfile
