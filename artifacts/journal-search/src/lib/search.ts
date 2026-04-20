@@ -30,7 +30,7 @@ export const SEARCH_TYPE_OPTIONS: { value: SearchType; label: string }[] = [
  * relevant ones per type.
  *
  *  journals : language[]
- *  books    : yearFrom, yearTo, language[]
+ *  books    : yearFrom, yearTo, language[], bookSources[]
  *  articles : yearFrom, yearTo, language[], license[]
  */
 export interface SearchFilters {
@@ -39,6 +39,12 @@ export interface SearchFilters {
   yearTo: number | "";
   language: string[];
   license: string[];
+  /**
+   * Active book sources (Books mode only).
+   * Values match BookSourceOption.id: "doab", "oapen", …
+   * Only active (implemented) sources should be sent to the backend.
+   */
+  bookSources: string[];
 }
 
 // ─── Sort order ───────────────────────────────────────────────────────────────

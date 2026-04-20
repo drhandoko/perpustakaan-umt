@@ -7,14 +7,15 @@
  *   journal → title, publisher, subjects, language, license
  *             CTA: "Open Journal"
  *
- *   book    → title, authors/editors, publisher, year, language, license
+ *   book    → title, authors/editors, publisher, year, language, license, ISBN
+ *             Source badge per book (DOAB / OAPEN / …)
  *             CTA: "Open Book"
  *
  * All links open in a new tab with rel="noopener noreferrer".
  * No external pages are ever embedded.
  */
 
-import { ExternalLink, Calendar, Globe, Scale, FileDown, Tag, MapPin } from "lucide-react";
+import { ExternalLink, Calendar, Globe, Scale, FileDown, Tag, MapPin, BookMarked } from "lucide-react";
 import type { Article, ContentType } from "../data/mockArticles";
 
 interface ArticleCardProps {
@@ -26,7 +27,7 @@ interface ArticleCardProps {
 function contentTypeBadgeClass(ct: ContentType): string {
   if (ct === "journal") return "bg-primary/8 text-primary border-primary/15";
   if (ct === "book")    return "bg-amber-50 text-amber-700 border-amber-200";
-  return "bg-violet-50 text-violet-700 border-violet-200"; // article
+  return "bg-violet-50 text-violet-700 border-violet-200";
 }
 
 function contentTypeLabel(ct: ContentType): string {
@@ -49,8 +50,16 @@ function licenseBadgeClass(license: string): string {
   return "bg-muted text-muted-foreground border-border";
 }
 
-const badgeBase =
-  "text-[11px] font-semibold uppercase tracking-wider border rounded-full px-3 py-1";
+/** Source badge colour per book index provider. */
+function sourceBadgeClass(source: string): string {
+  const s = source.toUpperCase();
+  if (s === "DOAB")  return "bg-teal-50 text-teal-700 border-teal-200";
+  if (s === "OAPEN") return "bg-indigo-50 text-indigo-700 border-indigo-200";
+  if (s === "DOAJ")  return "bg-primary/8 text-primary border-primary/15";
+  return "bg-muted text-muted-foreground border-border";
+}
+
+const badgeBase = "text-[11px] font-semibold uppercase tracking-wider border rounded-full px-3 py-1";
 
 // ─── Shared metadata pill ─────────────────────────────────────────────────────
 
@@ -67,11 +76,8 @@ function MetaPill({ icon, children }: { icon: React.ReactNode; children: React.R
 
 function ArticleBody({ article }: { article: Article }) {
   const { id, authors, journal, year, language } = article;
-
   const authorString =
-    authors.length > 3
-      ? `${authors.slice(0, 3).join(", ")} et al.`
-      : authors.join(", ");
+    authors.length > 3 ? `${authors.slice(0, 3).join(", ")} et al.` : authors.join(", ");
 
   return (
     <>
@@ -93,7 +99,6 @@ function ArticleBody({ article }: { article: Article }) {
 
 function JournalBody({ article }: { article: Article }) {
   const { publisher, subjects, country, language } = article;
-
   return (
     <>
       <div className="flex flex-wrap gap-2.5 mb-5">
@@ -125,13 +130,10 @@ function JournalBody({ article }: { article: Article }) {
 }
 
 function BookBody({ article }: { article: Article }) {
-  const { id, authors, publisher, year, language } = article;
-
+  const { id, authors, publisher, year, language, isbn, subjects } = article;
   const authorString = (() => {
     if (authors.length === 0 || authors[0] === "Not available") return "Not available";
-    return authors.length > 3
-      ? `${authors.slice(0, 3).join(", ")} et al.`
-      : authors.join(", ");
+    return authors.length > 3 ? `${authors.slice(0, 3).join(", ")} et al.` : authors.join(", ");
   })();
 
   return (
@@ -139,7 +141,7 @@ function BookBody({ article }: { article: Article }) {
       <p className="text-sm text-muted-foreground mb-3" data-testid={`text-authors-${id}`}>
         {authorString}
       </p>
-      <div className="flex flex-wrap gap-2.5 mb-5">
+      <div className="flex flex-wrap gap-2.5 mb-4">
         {publisher && publisher !== "Not available" && (
           <MetaPill icon={<Globe className="w-3 h-3 shrink-0" />}>{publisher}</MetaPill>
         )}
@@ -149,7 +151,27 @@ function BookBody({ article }: { article: Article }) {
         {language !== "Not available" && (
           <MetaPill icon={<Globe className="w-3 h-3 shrink-0" />}>{language}</MetaPill>
         )}
+        {isbn && (
+          <MetaPill icon={<BookMarked className="w-3 h-3 shrink-0" />}>
+            ISBN {isbn.length === 13
+              ? `${isbn.slice(0,3)}-${isbn.slice(3,4)}-${isbn.slice(4,9)}-${isbn.slice(9,12)}-${isbn.slice(12)}`
+              : isbn}
+          </MetaPill>
+        )}
       </div>
+      {subjects && subjects.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 mb-4">
+          {subjects.slice(0, 4).map((s) => (
+            <span
+              key={s}
+              className="inline-flex items-center gap-1 text-[11px] bg-secondary text-secondary-foreground border border-border rounded-full px-2.5 py-0.5"
+            >
+              <Tag className="w-2.5 h-2.5" aria-hidden="true" />
+              {s}
+            </span>
+          ))}
+        </div>
+      )}
     </>
   );
 }
@@ -157,7 +179,7 @@ function BookBody({ article }: { article: Article }) {
 // ─── Main card ────────────────────────────────────────────────────────────────
 
 export function ArticleCard({ article }: ArticleCardProps) {
-  const { id, title, contentType, doi, sourceUrl, pdfUrl, license, abstract } = article;
+  const { id, title, contentType, doi, sourceUrl, pdfUrl, license, abstract, source } = article;
 
   return (
     <article
@@ -170,6 +192,16 @@ export function ArticleCard({ article }: ArticleCardProps) {
         <span className={`${badgeBase} ${contentTypeBadgeClass(contentType)}`}>
           {contentTypeLabel(contentType)}
         </span>
+
+        {/* Source badge — always shown; especially useful in Books mode to distinguish DOAB/OAPEN */}
+        {source && (
+          <span
+            className={`${badgeBase} ${sourceBadgeClass(source)}`}
+            data-testid={`badge-source-${id}`}
+          >
+            {source}
+          </span>
+        )}
 
         {/* License badge */}
         {license && (
@@ -202,21 +234,22 @@ export function ArticleCard({ article }: ArticleCardProps) {
 
       {contentType === "article" && <ArticleBody article={article} />}
       {contentType === "journal" && <JournalBody article={article} />}
-      {contentType === "book"    && <BookBody article={article} />}
+      {contentType === "book"    && <BookBody    article={article} />}
 
-      {/* ── Footer: DOI + License pill (articles) + CTA ── */}
+      {/* ── Footer: identifier + PDF link + CTA ── */}
       <div className="flex items-center justify-between gap-4 mt-1">
         <div className="flex items-center gap-3 min-w-0">
-          {/* DOI */}
+          {/* Primary identifier: DOI preferred, then ISBN, then placeholder */}
           {doi ? (
-            <span
-              className="text-[11px] font-mono text-muted-foreground/70 truncate"
-              data-testid={`text-doi-${id}`}
-            >
+            <span className="text-[11px] font-mono text-muted-foreground/70 truncate" data-testid={`text-doi-${id}`}>
               DOI: {doi}
             </span>
+          ) : article.isbn ? (
+            <span className="text-[11px] font-mono text-muted-foreground/70 truncate">
+              ISBN: {article.isbn}
+            </span>
           ) : (
-            <span className="text-[11px] text-muted-foreground/50 italic">No DOI</span>
+            <span className="text-[11px] text-muted-foreground/50 italic">No identifier</span>
           )}
 
           {/* Inline PDF link for articles */}
@@ -229,15 +262,14 @@ export function ArticleCard({ article }: ArticleCardProps) {
               className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary hover:underline shrink-0"
               data-testid={`link-pdf-${id}`}
               aria-label={`Download PDF for "${title}"`}
-              title="Download PDF"
             >
               <FileDown className="w-3 h-3" aria-hidden="true" />
               PDF
             </a>
           )}
 
-          {/* License pill (journals / books) — license not shown as badge above */}
-          {contentType !== "article" && license && (
+          {/* License label inline (journals / books — license badge already in top badges) */}
+          {contentType === "journal" && license && (
             <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground shrink-0">
               <Scale className="w-3 h-3" aria-hidden="true" />
               {license}

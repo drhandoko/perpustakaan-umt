@@ -1,26 +1,25 @@
 /**
- * Main search page — Universitas Murni Teguh library portal.
+ * Main search page — Perpustakaan Universitas Murni Teguh discovery portal.
  *
  * Search type routing:
- *   journals → DOAJ journals endpoint
- *   books    → DOAB REST API
- *   articles → Crossref (journal-article type only)
+ *   journals → DOAJ journals API (direct, CORS-OK)
+ *   books    → /api/books-search backend proxy (DOAB + OAPEN aggregated)
+ *   articles → Crossref (journal-article type only, direct, CORS-OK)
  *
- * State model:
- *   searchType        — journals | books | articles (drives API selection)
- *   pendingFilters    — what the user sees in the sidebar (uncommitted)
- *   appliedFilters    — committed snapshot; drives client-side filtering
- *   sort              — client-side sort, applied after filtering (instant)
- *   currentPage       — 1-based page index
- *   apiTotal          — raw total returned by the API (for pagination)
+ * Filter model (pending vs applied):
+ *   Pending filters live in sidebar while user edits them.
+ *   Applied filters are committed on "Apply Filters" and drive client-side
+ *   filtering of the fetched result set.
+ *   bookSources is special: it also drives which backend sources are queried,
+ *   so a search is re-run when a source checkbox changes and the user applies.
  */
 
 import { useState, useCallback, useMemo, useRef } from "react";
-import { SearchBar }     from "../components/SearchBar";
-import { FilterSidebar } from "../components/FilterSidebar";
-import { ResultsArea }   from "../components/ResultsArea";
+import { SearchBar }         from "../components/SearchBar";
+import { FilterSidebar }     from "../components/FilterSidebar";
+import { ResultsArea }       from "../components/ResultsArea";
 import { searchDoajJournals } from "../lib/doajApi";
-import { searchDoab }         from "../lib/doabApi";
+import { searchBooks }        from "../lib/booksApi";
 import { searchCrossref }     from "../lib/crossrefApi";
 import {
   applyFilters,
@@ -28,18 +27,23 @@ import {
 } from "../lib/search";
 import type { SearchFilters, SearchType, SortOrder } from "../lib/search";
 import type { Article } from "../data/mockArticles";
+import { BOOK_SOURCES } from "../data/mockArticles";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const PAGE_SIZE = 25;
 
+/** Default active book source IDs (only implemented sources). */
+const DEFAULT_BOOK_SOURCES = BOOK_SOURCES.filter((s) => s.active).map((s) => s.id);
+
 // ─── Defaults ─────────────────────────────────────────────────────────────────
 
 const DEFAULT_FILTERS: Omit<SearchFilters, "query"> = {
-  yearFrom: "",
-  yearTo: "",
-  language: [],
-  license: [],
+  yearFrom:    "",
+  yearTo:      "",
+  language:    [],
+  license:     [],
+  bookSources: DEFAULT_BOOK_SOURCES,
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -55,21 +59,10 @@ function filtersAreEqual(
   return (
     a.yearFrom === b.yearFrom &&
     a.yearTo   === b.yearTo   &&
-    arraysEqual(a.language, b.language) &&
-    arraysEqual(a.license,  b.license)
+    arraysEqual(a.language,    b.language)    &&
+    arraysEqual(a.license,     b.license)     &&
+    arraysEqual(a.bookSources, b.bookSources)
   );
-}
-
-/** Dispatch to the correct API based on search type. */
-async function fetchByType(
-  type: SearchType,
-  query: string,
-  pageSize: number,
-  page: number
-): Promise<{ articles: Article[]; total: number }> {
-  if (type === "journals") return searchDoajJournals(query, pageSize, page);
-  if (type === "books")    return searchDoab(query, pageSize, page);
-  return searchCrossref(query, pageSize, page);
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -88,8 +81,8 @@ export function SearchPage() {
     useState<Omit<SearchFilters, "query">>(DEFAULT_FILTERS);
 
   // ── Results & pagination ─────────────────────────────────────────────────────
-  const [rawResults, setRawResults] = useState<Article[]>([]);
-  const [apiTotal, setApiTotal]     = useState(0);
+  const [rawResults, setRawResults]   = useState<Article[]>([]);
+  const [apiTotal, setApiTotal]       = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
 
   // ── Sort ─────────────────────────────────────────────────────────────────────
@@ -100,25 +93,46 @@ export function SearchPage() {
   const [loading, setLoading]         = useState(false);
   const [error, setError]             = useState<string | null>(null);
 
-  // Ref to preserve the last query string across pagination / filter applies
+  // Refs to preserve state across pagination
   const lastQueryRef  = useRef<string>("");
   const lastTypeRef   = useRef<SearchType>("articles");
+  const lastSourcesRef = useRef<string[]>(DEFAULT_BOOK_SOURCES);
   const contentDivRef = useRef<HTMLDivElement>(null);
 
   // ── Core search executor ──────────────────────────────────────────────────────
   const runSearch = useCallback(
-    async (type: SearchType, query: string, page: number) => {
+    async (
+      type: SearchType,
+      query: string,
+      page: number,
+      activeSources: string[],
+    ) => {
       setLoading(true);
       setError(null);
       setHasSearched(true);
       setCurrentPage(page);
-      lastQueryRef.current = query;
-      lastTypeRef.current  = type;
+      lastQueryRef.current   = query;
+      lastTypeRef.current    = type;
+      lastSourcesRef.current = activeSources;
 
       contentDivRef.current?.scrollTo({ top: 0, behavior: "smooth" });
 
       try {
-        const { articles, total } = await fetchByType(type, query, PAGE_SIZE, page);
+        let articles: Article[];
+        let total: number;
+
+        if (type === "journals") {
+          ({ articles, total } = await searchDoajJournals(query, PAGE_SIZE, page));
+        } else if (type === "books") {
+          // Only pass active (implemented) sources to the backend
+          const activeIds = activeSources.filter((id) =>
+            BOOK_SOURCES.some((s) => s.id === id && s.active)
+          );
+          ({ articles, total } = await searchBooks(query, activeIds, PAGE_SIZE, page));
+        } else {
+          ({ articles, total } = await searchCrossref(query, PAGE_SIZE, page));
+        }
+
         setRawResults(articles);
         setApiTotal(total);
       } catch (err) {
@@ -135,18 +149,15 @@ export function SearchPage() {
   // ── Keyword search — always resets to page 1 ─────────────────────────────────
   const handleSearch = useCallback(async () => {
     const trimmed = inputQuery.trim();
-    if (!trimmed) {
-      setError("Please enter a search term.");
-      return;
-    }
+    if (!trimmed) { setError("Please enter a search term."); return; }
     setSort("relevance");
-    await runSearch(searchType, trimmed, 1);
-  }, [inputQuery, searchType, runSearch]);
+    // Use the currently applied (not pending) filters for the search
+    await runSearch(searchType, trimmed, 1, appliedFilters.bookSources);
+  }, [inputQuery, searchType, appliedFilters.bookSources, runSearch]);
 
-  // ── Search type change — reset everything ─────────────────────────────────────
+  // ── Search type change — full reset ──────────────────────────────────────────
   const handleSearchTypeChange = useCallback((type: SearchType) => {
     setSearchType(type);
-    // Reset results and filters when switching type
     setRawResults([]);
     setApiTotal(0);
     setCurrentPage(1);
@@ -155,23 +166,27 @@ export function SearchPage() {
     setPendingFilters(DEFAULT_FILTERS);
     setAppliedFilters(DEFAULT_FILTERS);
     setSort("relevance");
-    lastQueryRef.current = "";
-    lastTypeRef.current  = type;
+    lastQueryRef.current   = "";
+    lastTypeRef.current    = type;
+    lastSourcesRef.current = DEFAULT_BOOK_SOURCES;
   }, []);
 
   // ── Pagination ────────────────────────────────────────────────────────────────
   const handlePageChange = useCallback(
     async (page: number) => {
       if (!lastQueryRef.current) return;
-      await runSearch(lastTypeRef.current, lastQueryRef.current, page);
+      await runSearch(
+        lastTypeRef.current,
+        lastQueryRef.current,
+        page,
+        lastSourcesRef.current,
+      );
     },
     [runSearch]
   );
 
   // ── Sort (client-side, instant) ───────────────────────────────────────────────
-  const handleSortChange = useCallback((newSort: SortOrder) => {
-    setSort(newSort);
-  }, []);
+  const handleSortChange = useCallback((newSort: SortOrder) => setSort(newSort), []);
 
   // ── Reset ─────────────────────────────────────────────────────────────────────
   const handleReset = useCallback(() => {
@@ -195,10 +210,24 @@ export function SearchPage() {
     []
   );
 
-  // ── Apply Filters — commit pending → applied ──────────────────────────────────
-  const handleApplyFilters = useCallback(() => {
+  // ── Apply Filters — commit pending → applied, re-run if sources changed ───────
+  const handleApplyFilters = useCallback(async () => {
     setAppliedFilters({ ...pendingFilters });
-  }, [pendingFilters]);
+
+    // If the bookSources changed AND we already have results, re-run the search
+    if (
+      searchType === "books" &&
+      lastQueryRef.current &&
+      !arraysEqual(pendingFilters.bookSources, appliedFilters.bookSources)
+    ) {
+      await runSearch(
+        "books",
+        lastQueryRef.current,
+        1,
+        pendingFilters.bookSources,
+      );
+    }
+  }, [pendingFilters, appliedFilters.bookSources, searchType, runSearch]);
 
   // ── Dirty flag ────────────────────────────────────────────────────────────────
   const filtersDirty = !filtersAreEqual(pendingFilters, appliedFilters);
@@ -214,7 +243,6 @@ export function SearchPage() {
     [filteredResults, sort]
   );
 
-  // ── Total pages ───────────────────────────────────────────────────────────────
   const totalPages = useMemo(
     () => Math.max(1, Math.ceil(apiTotal / PAGE_SIZE)),
     [apiTotal]

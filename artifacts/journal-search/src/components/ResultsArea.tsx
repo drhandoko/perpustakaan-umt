@@ -53,8 +53,8 @@ const TYPE_CONFIG: Record<SearchType, {
     icon: Book,
     heading: "Search open-access books",
     description:
-      "Enter a keyword, title, or author name. Results come from DOAB — the Directory of Open Access Books.",
-    sourceNote: "DOAB",
+      "Enter a keyword, title, or author name. Results are merged from DOAB and OAPEN — deduplicated by DOI, ISBN, and title.",
+    sourceNote: "DOAB + OAPEN",
     suggestions: ["history", "philosophy", "economics", "chemistry", "law"],
   },
   articles: {

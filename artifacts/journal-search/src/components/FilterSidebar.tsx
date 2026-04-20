@@ -5,16 +5,16 @@
  * are rendered:
  *
  *   journals : Language
- *   books    : Publication Year, Language
+ *   books    : Source, Publication Year, Language
  *   articles : Publication Year, Language, License
  *
- * All values are "pending" until the user clicks "Apply Filters".
+ * All filter changes are "pending" until the user clicks "Apply Filters".
  * The dirty indicator fires whenever pending differs from applied.
  */
 
-import { SlidersHorizontal, Check } from "lucide-react";
+import { SlidersHorizontal, Check, ExternalLink } from "lucide-react";
 import type { SearchFilters, SearchType } from "../lib/search";
-import { LANGUAGES, LICENSES, YEAR_MIN, YEAR_MAX } from "../data/mockArticles";
+import { LANGUAGES, LICENSES, BOOK_SOURCES, YEAR_MIN, YEAR_MAX } from "../data/mockArticles";
 
 interface FilterSidebarProps {
   searchType: SearchType;
@@ -37,7 +37,7 @@ function FilterSection({ label, children }: { label: string; children: React.Rea
   );
 }
 
-// ─── Reusable multi-select checkbox list ──────────────────────────────────────
+// ─── Multi-select checkbox list ───────────────────────────────────────────────
 
 function CheckboxList({
   options,
@@ -63,24 +63,101 @@ function CheckboxList({
           Clear selection
         </button>
       )}
-      {options.map((opt) => {
-        const checked = selected.includes(opt);
-        return (
-          <label key={opt} className="flex items-center gap-2.5 cursor-pointer group">
-            <input
-              type="checkbox"
-              value={opt}
-              checked={checked}
-              onChange={() => onToggle(opt)}
-              className="accent-primary w-3.5 h-3.5 shrink-0 rounded"
-              data-testid={`${testIdPrefix}-${opt.replace(/\s+/g, "-").toLowerCase()}`}
-            />
-            <span className="text-sm text-foreground/80 group-hover:text-primary transition-colors">
-              {opt}
-            </span>
-          </label>
-        );
-      })}
+      {options.map((opt) => (
+        <label key={opt} className="flex items-center gap-2.5 cursor-pointer group">
+          <input
+            type="checkbox"
+            value={opt}
+            checked={selected.includes(opt)}
+            onChange={() => onToggle(opt)}
+            className="accent-primary w-3.5 h-3.5 shrink-0 rounded"
+            data-testid={`${testIdPrefix}-${opt.replace(/\s+/g, "-").toLowerCase()}`}
+          />
+          <span className="text-sm text-foreground/80 group-hover:text-primary transition-colors">
+            {opt}
+          </span>
+        </label>
+      ))}
+    </div>
+  );
+}
+
+// ─── Book source filter ───────────────────────────────────────────────────────
+// Active sources get a real checkbox; inactive ("coming soon") are shown
+// disabled with a badge so users know more sources are planned.
+
+function BookSourceFilter({
+  selected,
+  onChange,
+}: {
+  selected: string[];
+  onChange: (next: string[]) => void;
+}) {
+  function toggle(id: string) {
+    const next = selected.includes(id)
+      ? selected.filter((s) => s !== id)
+      : [...selected, id];
+    onChange(next);
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      {BOOK_SOURCES.map((source) => (
+        <div key={source.id} className="flex items-center justify-between gap-2">
+          {source.active ? (
+            <label className="flex items-center gap-2.5 cursor-pointer group flex-1 min-w-0">
+              <input
+                type="checkbox"
+                value={source.id}
+                checked={selected.includes(source.id)}
+                onChange={() => toggle(source.id)}
+                className="accent-primary w-3.5 h-3.5 shrink-0 rounded"
+                data-testid={`filter-source-${source.id}`}
+              />
+              <span className="text-sm text-foreground/80 group-hover:text-primary transition-colors truncate">
+                {source.label}
+              </span>
+            </label>
+          ) : (
+            <div className="flex items-center gap-2.5 flex-1 min-w-0 opacity-50">
+              <input
+                type="checkbox"
+                disabled
+                className="w-3.5 h-3.5 shrink-0"
+                aria-label={`${source.label} (coming soon)`}
+              />
+              <span className="text-sm text-muted-foreground truncate">
+                {source.label}
+              </span>
+            </div>
+          )}
+
+          <div className="flex items-center gap-1.5 shrink-0">
+            {!source.active && (
+              <span className="text-[9px] font-bold uppercase tracking-wide bg-amber-100 text-amber-700 border border-amber-200 rounded-full px-2 py-0.5">
+                Soon
+              </span>
+            )}
+            <a
+              href={source.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-muted-foreground/50 hover:text-primary transition-colors"
+              aria-label={`Open ${source.label} website`}
+              title={source.url}
+            >
+              <ExternalLink className="w-3 h-3" aria-hidden="true" />
+            </a>
+          </div>
+        </div>
+      ))}
+
+      {/* Warning when no active source selected */}
+      {BOOK_SOURCES.filter((s) => s.active && selected.includes(s.id)).length === 0 && (
+        <p className="text-[11px] text-amber-600 leading-snug mt-1">
+          Select at least one source to search.
+        </p>
+      )}
     </div>
   );
 }
@@ -99,14 +176,11 @@ function YearRangeFilter({
   return (
     <div className="flex items-center gap-2">
       <div className="flex flex-col gap-1 flex-1">
-        <label htmlFor="year-from" className="text-[11px] text-muted-foreground font-medium">
-          From
-        </label>
+        <label htmlFor="year-from" className="text-[11px] text-muted-foreground font-medium">From</label>
         <input
           id="year-from"
           type="number"
-          min={YEAR_MIN}
-          max={YEAR_MAX}
+          min={YEAR_MIN} max={YEAR_MAX}
           placeholder={String(YEAR_MIN)}
           value={yearFrom}
           onChange={(e) =>
@@ -118,14 +192,11 @@ function YearRangeFilter({
       </div>
       <span className="text-muted-foreground mt-5 text-sm">–</span>
       <div className="flex flex-col gap-1 flex-1">
-        <label htmlFor="year-to" className="text-[11px] text-muted-foreground font-medium">
-          To
-        </label>
+        <label htmlFor="year-to" className="text-[11px] text-muted-foreground font-medium">To</label>
         <input
           id="year-to"
           type="number"
-          min={YEAR_MIN}
-          max={YEAR_MAX}
+          min={YEAR_MIN} max={YEAR_MAX}
           placeholder={String(YEAR_MAX)}
           value={yearTo}
           onChange={(e) =>
@@ -139,11 +210,14 @@ function YearRangeFilter({
   );
 }
 
-// ─── Source info per search type ──────────────────────────────────────────────
+// ─── Source info footer ───────────────────────────────────────────────────────
 
-const SOURCE_INFO: Record<SearchType, { label: string; href: string }[]> = {
-  journals: [{ label: "DOAJ",    href: "https://doaj.org" }],
-  books:    [{ label: "DOAB",    href: "https://directory.doabooks.org" }],
+const FOOTER_SOURCE: Record<SearchType, { label: string; href: string }[]> = {
+  journals: [{ label: "DOAJ",     href: "https://doaj.org" }],
+  books:    [
+    { label: "DOAB",  href: "https://directory.doabooks.org" },
+    { label: "OAPEN", href: "https://library.oapen.org" },
+  ],
   articles: [{ label: "Crossref", href: "https://www.crossref.org" }],
 };
 
@@ -156,7 +230,6 @@ export function FilterSidebar({
   onChange,
   onApply,
 }: FilterSidebarProps) {
-
   function toggleLanguage(lang: string) {
     const next = filters.language.includes(lang)
       ? filters.language.filter((l) => l !== lang)
@@ -173,7 +246,8 @@ export function FilterSidebar({
 
   const showYear    = searchType === "books" || searchType === "articles";
   const showLicense = searchType === "articles";
-  const sources     = SOURCE_INFO[searchType];
+  const showSources = searchType === "books";
+  const sources     = FOOTER_SOURCE[searchType];
 
   return (
     <aside
@@ -191,6 +265,16 @@ export function FilterSidebar({
 
       {/* Scrollable filter content */}
       <div className="flex-1 overflow-y-auto px-6">
+
+        {/* ── Book Sources (books only) ── */}
+        {showSources && (
+          <FilterSection label="Source">
+            <BookSourceFilter
+              selected={filters.bookSources}
+              onChange={(next) => onChange({ bookSources: next })}
+            />
+          </FilterSection>
+        )}
 
         {/* ── Publication Year (books + articles only) ── */}
         {showYear && (
@@ -262,7 +346,6 @@ export function FilterSidebar({
                 ? "bg-primary text-primary-foreground hover:opacity-90 shadow-sm"
                 : "bg-muted text-muted-foreground border border-border cursor-default"
             }`}
-            aria-label="Apply filters to current results"
           >
             <Check className="w-4 h-4" aria-hidden="true" />
             Apply Filters

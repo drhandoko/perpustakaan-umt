@@ -23,16 +23,18 @@ export interface Article {
   journal: string;
   year: number;
   doi: string | null;
+  /** ISBN digits-only (no hyphens). Present for books only. */
+  isbn?: string | null;
   sourceUrl: string;
   pdfUrl: string | null;
-  /** API source label shown in badge: "DOAJ", "DOAB", "Crossref" */
+  /** API source label: "DOAJ", "DOAB", "OAPEN", "Crossref", … */
   source: string;
   license: string | null;
   language: string;
   abstract?: string;
   /** Publisher display name (journals + books) */
   publisher?: string;
-  /** Subject/discipline terms (journals) */
+  /** Subject/discipline terms */
   subjects?: string[];
   /** Country of the publisher (journals) */
   country?: string;
@@ -65,6 +67,23 @@ export const LICENSES = [
   "CC BY-NC-ND 4.0",
   "CC BY-SA 4.0",
   "CC BY-ND 4.0",
+];
+
+/** Book source options shown in the Books Source filter. */
+export interface BookSourceOption {
+  /** Internal id sent to the backend as the "sources" param. */
+  id: string;
+  label: string;
+  /** true = implemented and queryable; false = coming soon (read-only). */
+  active: boolean;
+  url: string;
+}
+
+export const BOOK_SOURCES: BookSourceOption[] = [
+  { id: "doab",  label: "DOAB",                active: true,  url: "https://directory.doabooks.org" },
+  { id: "oapen", label: "OAPEN",               active: true,  url: "https://library.oapen.org" },
+  { id: "orl",   label: "Open Research Library", active: false, url: "https://openresearchlibrary.org" },
+  { id: "muse",  label: "Project MUSE OA",     active: false, url: "https://muse.jhu.edu/open-access-books" },
 ];
 
 export const YEAR_MIN = 2000;
