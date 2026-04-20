@@ -8,9 +8,9 @@ export function Header() {
   return (
     <header className="bg-primary text-primary-foreground" data-testid="header">
       {/* Top micro-bar */}
-      <div className="border-b border-white/10 bg-black/15">
+      <div className="border-b border-primary/15 bg-white">
         <div className="max-w-screen-xl mx-auto px-8 py-1.5 flex items-center justify-between">
-          <span className="flex items-center gap-1.5 text-[11px] font-medium tracking-widest uppercase opacity-75">
+          <span className="flex items-center gap-1.5 text-[11px] font-medium tracking-widest uppercase text-primary">
             <img
               src="/logo.png"
               alt="Universitas Murni Teguh logo"
@@ -18,7 +18,7 @@ export function Header() {
             />
             Universitas Murni Teguh
           </span>
-          <span className="text-[11px] opacity-60 hidden sm:block">
+          <span className="text-[11px] text-primary/60 hidden sm:block">
             Library &amp; Information Services
           </span>
         </div>
