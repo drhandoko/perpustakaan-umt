@@ -51,15 +51,14 @@ cd perpustakaan
 # 2. Install dependencies
 pnpm install
 
-# 3. Copy the example environment file
+# 3. Copy the example environment file and edit as needed
 cp .env.example .env
-# Edit .env if you want a different port or sub-path deployment (see below)
 
 # 4. Build for production (frontend + backend)
-pnpm run build:prod
+pnpm run build
 
-# 5. Start the server
-PORT=3000 pnpm run start:prod
+# 5. Start the server (defaults to port 3000)
+PORT=3000 pnpm run start
 ```
 
 Then open `http://your-server:3000` in a browser.
@@ -86,18 +85,19 @@ All variables have sensible defaults. Only `PORT` is commonly changed.
 The built-in static serving means a single `node` process handles everything.
 
 ```bash
-# After building (pnpm run build:prod):
-PORT=3000 NODE_ENV=production node artifacts/api-server/dist/index.mjs
+# 1. Build
+pnpm run build
+
+# 2. Start (defaults to port 3000; set PORT to override)
+PORT=3000 pnpm run start
 ```
 
 Use **PM2** to keep the process alive across reboots:
 
 ```bash
 npm install -g pm2
-pm2 start artifacts/api-server/dist/index.mjs \
-  --name perpustakaan \
-  --env NODE_ENV=production \
-  -- --port 3000
+PORT=3000 NODE_ENV=production pm2 start artifacts/api-server/dist/index.mjs \
+  --name perpustakaan
 pm2 save
 pm2 startup   # follow the printed instructions to enable autostart
 ```
@@ -148,11 +148,10 @@ If the portal must live at a sub-path of an existing site (e.g. `https://www.exa
 
 ```bash
 # Build with the sub-path as BASE_PATH (must end with /)
-BASE_PATH=/library/ pnpm --filter @workspace/journal-search run build
-pnpm --filter @workspace/api-server run build
+BASE_PATH=/library/ pnpm run build
 
 # Start with the same port
-PORT=3000 NODE_ENV=production node artifacts/api-server/dist/index.mjs
+PORT=3000 pnpm run start
 ```
 
 In nginx, proxy only the `/library/` location:
@@ -168,39 +167,17 @@ location /library/ {
 
 ### Option 4 — Docker
 
-A minimal `Dockerfile` for containerised deployments:
-
-```dockerfile
-FROM node:20-alpine AS base
-RUN npm install -g pnpm
-
-WORKDIR /app
-COPY pnpm-lock.yaml pnpm-workspace.yaml ./
-COPY package.json ./
-COPY artifacts/ ./artifacts/
-COPY libs/ ./libs/
-COPY tsconfig.json ./
-
-# Install and build
-RUN pnpm install --frozen-lockfile
-RUN BASE_PATH=/ pnpm run build:prod
-
-# Runtime image (keep only built artefacts and production deps)
-FROM node:20-alpine AS runtime
-WORKDIR /app
-COPY --from=base /app/artifacts/api-server/dist/ ./artifacts/api-server/dist/
-COPY --from=base /app/artifacts/journal-search/dist/ ./artifacts/journal-search/dist/
-
-EXPOSE 3000
-ENV PORT=3000
-ENV NODE_ENV=production
-
-CMD ["node", "artifacts/api-server/dist/index.mjs"]
-```
+A `Dockerfile` is included at the root of the repository. Build and run it:
 
 ```bash
 docker build -t perpustakaan .
-docker run -d -p 3000:3000 --name perpustakaan perpustakaan
+docker run -d -p 3000:3000 --env PORT=3000 --name perpustakaan perpustakaan
+```
+
+To override the port:
+
+```bash
+docker run -d -p 8080:8080 --env PORT=8080 --name perpustakaan perpustakaan
 ```
 
 ---
@@ -249,7 +226,7 @@ The frontend dev server is at `http://localhost:5173`.
 │       └── dist/public/         Production static files (after build:prod)
 │           ├── index.html
 │           └── assets/
-├── libs/                        Shared TypeScript libraries
+├── lib/                         Shared TypeScript libraries
 ├── .env.example                 Environment variable template
 ├── package.json                 Root scripts (build:prod, start:prod)
 └── pnpm-workspace.yaml
@@ -319,8 +296,8 @@ No inbound rules are needed beyond the application port (default 3000).
 | Problem | Likely cause | Fix |
 |---|---|---|
 | Blank page after deployment | `BASE_PATH` mismatch | Ensure `BASE_PATH` matches the URL path you deployed to |
-| `Static directory not found` warning | `build:prod` not run yet | Run `pnpm run build:prod` before starting |
-| `PORT is required` error | Missing env var | Set `PORT=3000` before starting |
+| `Static directory not found` warning | `build` not run yet | Run `pnpm run build` before starting |
+| Server starts on wrong port | `PORT` env var not set | Add `PORT=3000` before the start command |
 | Journal quartiles all "Unranked" | Outbound to `api.openalex.org` blocked | Allow outbound HTTPS from the server to `api.openalex.org` |
 | Books search returns nothing | Outbound to DOAB/OAPEN blocked | Allow outbound HTTPS to `doabooks.org` and `oapen.org` |
 
@@ -330,7 +307,7 @@ No inbound rules are needed beyond the application port (default 3000).
 
 ```bash
 git pull
-pnpm install          # pick up any new dependencies
-pnpm run build:prod   # rebuild
-pm2 restart perpustakaan   # or: kill the old process and re-run start:prod
+pnpm install        # pick up any new dependencies
+pnpm run build      # rebuild frontend + backend
+pm2 restart perpustakaan   # or: PORT=3000 pnpm run start
 ```
