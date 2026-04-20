@@ -1,32 +1,60 @@
 /**
  * Client-side filtering applied on top of API results.
  *
- * DOAJ already filters by keyword server-side. After the results arrive,
- * this function applies the sidebar filter values (year, language, license)
- * locally on the returned Article array.
- *
- * ─── Swapping APIs ──────────────────────────────────────────────────────────
- * The actual API call lives in src/lib/doajApi.ts.
- * To add another provider (OpenAlex, CORE, EuropePMC), create a parallel
- * file (e.g. src/lib/openalexApi.ts) that returns Article[] and call it
- * from SearchPage.tsx alongside or instead of searchDoaj().
- * ─────────────────────────────────────────────────────────────────────────────
+ * Both DOAJ and Crossref results are fetched server-side by keyword.
+ * This module handles:
+ *   1. Sidebar filters (year, language, license) — applied locally after fetch
+ *   2. Source selection — determines which APIs are called in SearchPage
  */
 
 import type { Article } from "../data/mockArticles";
 
+// ─── Types ────────────────────────────────────────────────────────────────────
+
 export interface SearchFilters {
   query: string;
-  source: string;      // kept for future multi-source support; ignored for DOAJ (all results are "DOAJ")
   yearFrom: number | "";
   yearTo: number | "";
   language: string;
   license: string;
 }
 
+/** Which APIs to query. At least one must be true. */
+export interface SourceSelection {
+  doaj: boolean;
+  crossref: boolean;
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+export function sourcesAreEqual(a: SourceSelection, b: SourceSelection): boolean {
+  return a.doaj === b.doaj && a.crossref === b.crossref;
+}
+
 /**
- * Apply sidebar filters to an array of Articles already returned by the API.
- * Year-0 articles (year not available from DOAJ) are treated as passing the year filter.
+ * Merge two Article arrays, deduplicating by DOI.
+ * Items earlier in the list take precedence (DOAJ results first, then Crossref).
+ */
+export function mergeAndDeduplicate(doajArticles: Article[], crossrefArticles: Article[]): Article[] {
+  const seen = new Set<string>();
+  const merged: Article[] = [];
+
+  for (const article of [...doajArticles, ...crossrefArticles]) {
+    const key = article.doi ? `doi:${article.doi.toLowerCase()}` : `id:${article.id}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      merged.push(article);
+    }
+  }
+
+  return merged;
+}
+
+// ─── Filtering ────────────────────────────────────────────────────────────────
+
+/**
+ * Apply sidebar filters to an Article array already returned by the API(s).
+ * Year-0 articles (year not available) pass the year filter automatically.
  */
 export function applyFilters(articles: Article[], filters: SearchFilters): Article[] {
   const { yearFrom, yearTo, language, license } = filters;

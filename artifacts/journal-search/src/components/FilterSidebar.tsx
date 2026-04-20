@@ -1,20 +1,27 @@
 /**
  * Left sidebar filter panel.
  *
- * Filters are "pending" until the user clicks "Apply Filters".
- * A visual indicator appears when pending values differ from the last applied set.
+ * Sections:
+ *   - Source (DOAJ / Crossref checkboxes) — controls which APIs are called
+ *   - Publication Year range
+ *   - Language radio buttons
+ *   - License radio buttons
+ *
+ * All values are "pending" until the user clicks "Apply Filters".
+ * The dirty indicator fires as soon as any pending value differs from the
+ * last committed (applied) snapshot.
  */
 
 import { SlidersHorizontal, Check } from "lucide-react";
-import type { SearchFilters } from "../lib/search";
+import type { SearchFilters, SourceSelection } from "../lib/search";
 import { LANGUAGES, LICENSES, YEAR_MIN, YEAR_MAX } from "../data/mockArticles";
 
 interface FilterSidebarProps {
-  /** Current pending values (what the user sees / is editing) */
   filters: SearchFilters;
-  /** Whether pending values differ from what's currently applied */
+  sources: SourceSelection;
   dirty: boolean;
   onChange: (updated: Partial<SearchFilters>) => void;
+  onSourceChange: (updated: Partial<SourceSelection>) => void;
   onApply: () => void;
 }
 
@@ -29,7 +36,23 @@ function FilterSection({ label, children }: { label: string; children: React.Rea
   );
 }
 
-export function FilterSidebar({ filters, dirty, onChange, onApply }: FilterSidebarProps) {
+export function FilterSidebar({
+  filters,
+  sources,
+  dirty,
+  onChange,
+  onSourceChange,
+  onApply,
+}: FilterSidebarProps) {
+  const atLeastOneSource = sources.doaj || sources.crossref;
+
+  function handleSourceToggle(key: keyof SourceSelection) {
+    const next = { ...sources, [key]: !sources[key] };
+    // Prevent unchecking the last selected source
+    if (!next.doaj && !next.crossref) return;
+    onSourceChange({ [key]: !sources[key] });
+  }
+
   return (
     <aside
       className="w-64 shrink-0 bg-sidebar border-r border-sidebar-border min-h-full flex flex-col"
@@ -46,7 +69,67 @@ export function FilterSidebar({ filters, dirty, onChange, onApply }: FilterSideb
 
       {/* Scrollable filter area */}
       <div className="flex-1 overflow-y-auto px-6">
-        {/* Publication Year range */}
+
+        {/* ── Source ── */}
+        <FilterSection label="Source">
+          <div className="flex flex-col gap-2.5">
+            {/* DOAJ */}
+            <label
+              className="flex items-start gap-2.5 cursor-pointer group"
+              data-testid="filter-source-doaj-label"
+            >
+              <input
+                type="checkbox"
+                checked={sources.doaj}
+                onChange={() => handleSourceToggle("doaj")}
+                disabled={sources.doaj && !sources.crossref}
+                className="accent-primary w-3.5 h-3.5 mt-0.5 shrink-0"
+                data-testid="filter-source-doaj"
+                aria-label="Include DOAJ results"
+              />
+              <span className="flex flex-col gap-0.5">
+                <span className="text-sm font-medium text-foreground/80 group-hover:text-primary transition-colors leading-tight">
+                  DOAJ
+                </span>
+                <span className="text-[10px] text-muted-foreground/60 leading-tight">
+                  Open-access curated index
+                </span>
+              </span>
+            </label>
+
+            {/* Crossref */}
+            <label
+              className="flex items-start gap-2.5 cursor-pointer group"
+              data-testid="filter-source-crossref-label"
+            >
+              <input
+                type="checkbox"
+                checked={sources.crossref}
+                onChange={() => handleSourceToggle("crossref")}
+                disabled={sources.crossref && !sources.doaj}
+                className="accent-primary w-3.5 h-3.5 mt-0.5 shrink-0"
+                data-testid="filter-source-crossref"
+                aria-label="Include Crossref results"
+              />
+              <span className="flex flex-col gap-0.5">
+                <span className="text-sm font-medium text-foreground/80 group-hover:text-primary transition-colors leading-tight">
+                  Crossref
+                </span>
+                <span className="text-[10px] text-muted-foreground/60 leading-tight">
+                  Scholarly metadata registry
+                </span>
+              </span>
+            </label>
+
+            {!atLeastOneSource && (
+              <p className="text-[10px] text-rose-500 leading-snug">
+                At least one source must be selected.
+              </p>
+            )}
+          </div>
+        </FilterSection>
+
+        {/* ── Publication Year ── */}
         <FilterSection label="Publication Year">
           <div className="flex items-center gap-2">
             <div className="flex flex-col gap-1 flex-1">
@@ -89,7 +172,7 @@ export function FilterSidebar({ filters, dirty, onChange, onApply }: FilterSideb
           </div>
         </FilterSection>
 
-        {/* Language */}
+        {/* ── Language ── */}
         <FilterSection label="Language">
           <div className="flex flex-col gap-2.5">
             {LANGUAGES.map((lang) => (
@@ -111,7 +194,7 @@ export function FilterSidebar({ filters, dirty, onChange, onApply }: FilterSideb
           </div>
         </FilterSection>
 
-        {/* License */}
+        {/* ── License ── */}
         <FilterSection label="License">
           <div className="flex flex-col gap-2.5">
             {LICENSES.map((lic) => (
@@ -133,10 +216,10 @@ export function FilterSidebar({ filters, dirty, onChange, onApply }: FilterSideb
           </div>
         </FilterSection>
 
-        {/* DOAJ note */}
+        {/* Footer note */}
         <div className="py-5">
           <p className="text-[11px] text-muted-foreground/60 leading-relaxed">
-            Results are fetched from the{" "}
+            Results are fetched from{" "}
             <a
               href="https://doaj.org"
               target="_blank"
@@ -145,14 +228,22 @@ export function FilterSidebar({ filters, dirty, onChange, onApply }: FilterSideb
             >
               DOAJ
             </a>{" "}
-            public API. No API key required.
+            and{" "}
+            <a
+              href="https://www.crossref.org"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline underline-offset-2 hover:text-primary transition-colors"
+            >
+              Crossref
+            </a>{" "}
+            public APIs. No API key required.
           </p>
         </div>
       </div>
 
-      {/* Apply Filters button — sticky at the bottom of the sidebar */}
+      {/* Apply Filters button — sticky at the bottom */}
       <div className="px-6 py-5 border-t border-sidebar-border bg-sidebar">
-        {/* "Unsaved changes" hint */}
         {dirty && (
           <p className="text-[11px] text-amber-600 mb-2.5 leading-snug">
             Filter changes not yet applied

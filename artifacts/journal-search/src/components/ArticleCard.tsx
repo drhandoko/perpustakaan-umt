@@ -14,6 +14,12 @@ interface ArticleCardProps {
   article: Article;
 }
 
+function sourceBadgeClass(source: string): string {
+  if (source === "DOAJ")     return "bg-primary/8 text-primary border-primary/15";
+  if (source === "Crossref") return "bg-violet-50 text-violet-700 border-violet-200";
+  return "bg-muted text-muted-foreground border-border";
+}
+
 function licenseBadgeClass(license: string): string {
   if (license.startsWith("CC BY 4")) return "bg-emerald-50 text-emerald-700 border-emerald-200";
   if (license.startsWith("CC BY-NC-ND")) return "bg-rose-50 text-rose-700 border-rose-200";
@@ -41,7 +47,7 @@ export function ArticleCard({ article }: ArticleCardProps) {
       {/* ── Top badges ── */}
       <div className="flex flex-wrap items-center gap-2 mb-4">
         <span
-          className="text-[11px] font-semibold uppercase tracking-wider bg-primary/8 text-primary border border-primary/15 rounded-full px-3 py-1"
+          className={`text-[11px] font-semibold uppercase tracking-wider border rounded-full px-3 py-1 ${sourceBadgeClass(source)}`}
           data-testid={`badge-source-${id}`}
         >
           {source}

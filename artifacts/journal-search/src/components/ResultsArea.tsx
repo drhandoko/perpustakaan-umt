@@ -60,7 +60,7 @@ export function ResultsArea({
         <div className="flex items-center gap-2 mb-6 pb-4 border-b border-border">
           <Loader2 className="w-4 h-4 animate-spin text-primary" aria-hidden="true" />
           <span className="text-sm text-muted-foreground">
-            Searching DOAJ — please wait…
+            Searching — please wait…
           </span>
         </div>
         {/* Skeleton cards */}
@@ -111,8 +111,10 @@ export function ResultsArea({
         </h2>
         <p className="text-sm text-muted-foreground max-w-md leading-relaxed">
           Enter a keyword, author name, or journal title above and click Search.
-          Results come directly from the DOAJ (Directory of Open Access
-          Journals) — a curated index of peer-reviewed open-access literature.
+          Results come from{" "}
+          <span className="font-medium text-foreground/70">DOAJ</span> and{" "}
+          <span className="font-medium text-foreground/70">Crossref</span> —
+          curated, peer-reviewed open-access literature.
         </p>
 
         {/* Suggested search chips */}
@@ -154,7 +156,7 @@ export function ResultsArea({
         </h2>
         <p className="text-sm text-muted-foreground max-w-sm leading-relaxed">
           {apiTotal > 0
-            ? `DOAJ returned ${apiTotal.toLocaleString()} results but the current filters excluded all of them. Try relaxing the year, language, or license filters.`
+            ? `${apiTotal.toLocaleString()} results were fetched but the current filters excluded all of them. Try relaxing the year, language, or license filters.`
             : "Try different keywords or broaden your search terms."}
         </p>
       </div>
@@ -175,15 +177,15 @@ export function ResultsArea({
             <span className="font-normal text-muted-foreground">
               {articles.length === 1 ? "result" : "results"}
             </span>
-            {/* Show the full DOAJ total when client-side filters narrow it down */}
+            {/* Show raw total when client-side filters narrow it down */}
             {apiTotal > articles.length && (
               <span className="text-sm font-normal text-muted-foreground">
-                {" "}(of {apiTotal.toLocaleString()} from DOAJ)
+                {" "}(of {apiTotal.toLocaleString()} fetched)
               </span>
             )}
           </p>
           <p className="text-xs text-muted-foreground mt-0.5 italic hidden sm:block">
-            Source: DOAJ &middot; Open-access titles only
+            Sources: DOAJ &middot; Crossref &middot; Deduplicated by DOI
           </p>
         </div>
 
