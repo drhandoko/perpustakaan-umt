@@ -10,7 +10,12 @@ export function Header() {
       {/* Top micro-bar */}
       <div className="border-b border-white/10 bg-black/15">
         <div className="max-w-screen-xl mx-auto px-8 py-1.5 flex items-center justify-between">
-          <span className="text-[11px] font-medium tracking-widest uppercase opacity-75">
+          <span className="flex items-center gap-1.5 text-[11px] font-medium tracking-widest uppercase opacity-75">
+            <img
+              src="/logo.png"
+              alt="Universitas Murni Teguh logo"
+              className="h-4 w-auto"
+            />
             Universitas Murni Teguh
           </span>
           <span className="text-[11px] opacity-60 hidden sm:block">
@@ -29,7 +34,7 @@ export function Header() {
         {/* Title block */}
         <div className="flex flex-col">
           <h1 className="text-2xl font-serif font-bold leading-tight tracking-tight">
-            Open Access Journal Search
+            Perpustakaan Universitas Murni Teguh
           </h1>
           <p className="text-sm opacity-70 mt-0.5">
             Discover freely available scholarly literature
