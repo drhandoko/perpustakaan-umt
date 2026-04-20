@@ -166,30 +166,46 @@ function BookSourceFilter({
 }
 
 // ─── Journal ranking filter ───────────────────────────────────────────────────
-// Single-select radio group.  "any" (default) shows all journals.
-// Q1–Q4 match the journalQuartile field; "unranked" matches undefined quartile.
+// Multi-select checkbox group.  Empty selection = show all (any ranking).
+// Q1–Q4 match the journalQuartile field; "unranked" matches no quartile data.
+// Multiple selections are combined with OR logic.
 
 function JournalRankingFilter({
-  value,
+  selected,
   onChange,
 }: {
-  value: string;
-  onChange: (next: string) => void;
+  selected: string[];
+  onChange: (next: string[]) => void;
 }) {
+  function toggle(value: string) {
+    const next = selected.includes(value)
+      ? selected.filter((v) => v !== value)
+      : [...selected, value];
+    onChange(next);
+  }
+
   return (
     <div className="flex flex-col gap-2.5">
+      {selected.length > 0 && (
+        <button
+          type="button"
+          onClick={() => onChange([])}
+          className="self-start text-[10px] text-primary underline underline-offset-2 hover:opacity-70 transition-opacity mb-0.5"
+        >
+          Clear selection
+        </button>
+      )}
       {JOURNAL_RANKING_OPTIONS.map((opt) => (
         <label
           key={opt.value}
           className="flex items-center gap-2.5 cursor-pointer group"
         >
           <input
-            type="radio"
-            name="journal-ranking"
+            type="checkbox"
             value={opt.value}
-            checked={value === opt.value}
-            onChange={() => onChange(opt.value)}
-            className="accent-primary w-3.5 h-3.5 shrink-0"
+            checked={selected.includes(opt.value)}
+            onChange={() => toggle(opt.value)}
+            className="accent-primary w-3.5 h-3.5 shrink-0 rounded"
             data-testid={`filter-ranking-${opt.value}`}
           />
           <span className="text-sm text-foreground/80 group-hover:text-primary transition-colors">
@@ -383,7 +399,7 @@ export function FilterSidebar({
         {showRanking && (
           <FilterSection label="Journal Ranking">
             <JournalRankingFilter
-              value={filters.journalRanking ?? "any"}
+              selected={Array.isArray(filters.journalRanking) ? filters.journalRanking : []}
               onChange={(next) => onChange({ journalRanking: next })}
             />
           </FilterSection>

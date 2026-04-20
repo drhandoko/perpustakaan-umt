@@ -54,11 +54,11 @@ export interface SearchFilters {
   journalSubjects: string[];
   /**
    * SJR quartile ranking filter (Journals mode only).
-   * "any"      = no filter (show all)
-   * "Q1"–"Q4"  = match that exact quartile
-   * "unranked" = match journals with no quartile data
+   * Empty array = no filter (show all).
+   * Values: "Q1" | "Q2" | "Q3" | "Q4" | "unranked"
+   * Multiple values = OR logic (journal must match any selected tier).
    */
-  journalRanking: string;
+  journalRanking: string[];
 }
 
 // ─── Sort order ───────────────────────────────────────────────────────────────
@@ -111,7 +111,9 @@ export function applyFilters(
   const { yearFrom, yearTo, language, license } = filters;
   // Guards against stale HMR state that predates these fields being added.
   const journalSubjects: string[] = filters.journalSubjects ?? [];
-  const journalRanking: string    = filters.journalRanking  ?? "any";
+  const journalRanking: string[]  = Array.isArray(filters.journalRanking)
+    ? filters.journalRanking
+    : [];
 
   // Pre-compute the selected subject groups' match terms for O(1) lookups.
   const selectedMatchTerms: string[] =
@@ -151,13 +153,17 @@ export function applyFilters(
     }
 
     // Journal ranking filter — only applied when the article is a journal and
-    // a specific ranking tier (not "any") is selected.
-    if (article.contentType === "journal" && journalRanking !== "any") {
-      if (journalRanking === "unranked") {
-        if (article.journalQuartile) return false;
-      } else {
-        if (article.journalQuartile !== journalRanking) return false;
-      }
+    // at least one ranking tier is selected. Multiple tiers are OR-combined.
+    if (article.contentType === "journal" && journalRanking.length > 0) {
+      const wantsUnranked = journalRanking.includes("unranked");
+      const wantedTiers   = journalRanking.filter((r) => r !== "unranked");
+
+      const matchesTier     = wantedTiers.length > 0 && article.journalQuartile
+        ? wantedTiers.includes(article.journalQuartile)
+        : false;
+      const matchesUnranked = wantsUnranked && !article.journalQuartile;
+
+      if (!matchesTier && !matchesUnranked) return false;
     }
 
     return true;

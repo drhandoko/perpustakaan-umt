@@ -109,7 +109,6 @@ export const YEAR_MAX = 2026;
  * "unranked" matches journals where `journalQuartile` is undefined.
  */
 export const JOURNAL_RANKING_OPTIONS: { value: string; label: string }[] = [
-  { value: "any",      label: "Any ranking" },
   { value: "Q1",       label: "Q1 — Top 25%" },
   { value: "Q2",       label: "Q2 — Upper mid" },
   { value: "Q3",       label: "Q3 — Lower mid" },

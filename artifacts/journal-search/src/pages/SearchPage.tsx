@@ -45,7 +45,7 @@ const DEFAULT_FILTERS: Omit<SearchFilters, "query"> = {
   license:         [],
   bookSources:     DEFAULT_BOOK_SOURCES,
   journalSubjects: [],
-  journalRanking:  "any",
+  journalRanking:  [],
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -65,7 +65,10 @@ function filtersAreEqual(
     arraysEqual(a.license,         b.license)         &&
     arraysEqual(a.bookSources,     b.bookSources)     &&
     arraysEqual(a.journalSubjects, b.journalSubjects) &&
-    a.journalRanking === b.journalRanking
+    arraysEqual(
+      Array.isArray(a.journalRanking) ? a.journalRanking : [],
+      Array.isArray(b.journalRanking) ? b.journalRanking : [],
+    )
   );
 }
 
