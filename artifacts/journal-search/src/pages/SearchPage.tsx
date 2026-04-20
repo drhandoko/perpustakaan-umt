@@ -1,12 +1,11 @@
 /**
  * Main search page — Universitas Murni Teguh library portal.
  *
- * Search flow:
- *  1. User types a keyword and clicks Search (or presses Enter).
- *  2. searchDoaj() calls the DOAJ public API (no key required).
- *  3. The returned Article[] is stored in state.
- *  4. applyFilters() runs client-side on those results using the sidebar values.
- *  5. The filtered list is passed to ResultsArea for display.
+ * Filter state is split in two:
+ *   pendingFilters  — what the user sees / edits in the sidebar right now
+ *   appliedFilters  — the last committed snapshot; drives applyFilters()
+ *
+ * Results only change when the user clicks "Apply Filters" in the sidebar.
  */
 
 import { useState, useCallback, useMemo } from "react";
@@ -27,32 +26,39 @@ const DEFAULT_FILTERS: SearchFilters = {
   license: "All",
 };
 
+/** Returns true when two filter objects have different values */
+function filtersAreEqual(a: SearchFilters, b: SearchFilters): boolean {
+  return (
+    a.yearFrom === b.yearFrom &&
+    a.yearTo   === b.yearTo   &&
+    a.language === b.language &&
+    a.license  === b.license
+  );
+}
+
 export function SearchPage() {
-  // Keyword currently typed in the search box
+  // Keyword typed in the search box
   const [inputQuery, setInputQuery] = useState("");
 
-  // Sidebar filter state (applied client-side after results arrive)
-  const [sidebarFilters, setSidebarFilters] =
+  // Sidebar filter values — updated as the user changes selections
+  const [pendingFilters, setPendingFilters] =
     useState<Omit<SearchFilters, "query">>(DEFAULT_FILTERS);
 
-  // Raw articles returned by the last API call (unfiltered)
-  const [rawResults, setRawResults] = useState<Article[]>([]);
+  // Last committed snapshot — only updated on "Apply Filters" click
+  const [appliedFilters, setAppliedFilters] =
+    useState<Omit<SearchFilters, "query">>(DEFAULT_FILTERS);
 
-  // Total count from the DOAJ API (before client-side filtering)
+  // Raw articles returned by the last API call
+  const [rawResults, setRawResults] = useState<Article[]>([]);
   const [apiTotal, setApiTotal] = useState(0);
 
-  // Whether the user has triggered at least one search
   const [hasSearched, setHasSearched] = useState(false);
-
-  // Loading and error states for the API call
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // ── Trigger DOAJ search ────────────────────────────────────────────────────
   const handleSearch = useCallback(async () => {
     const trimmed = inputQuery.trim();
-
-    // Require at least one character before calling the API
     if (!trimmed) {
       setError("Please enter a search term.");
       return;
@@ -67,7 +73,6 @@ export function SearchPage() {
       setRawResults(articles);
       setApiTotal(total);
     } catch (err) {
-      // Show the error message from the API client
       setError(err instanceof Error ? err.message : "An unexpected error occurred.");
       setRawResults([]);
       setApiTotal(0);
@@ -79,7 +84,8 @@ export function SearchPage() {
   // ── Reset everything ───────────────────────────────────────────────────────
   const handleReset = useCallback(() => {
     setInputQuery("");
-    setSidebarFilters(DEFAULT_FILTERS);
+    setPendingFilters(DEFAULT_FILTERS);
+    setAppliedFilters(DEFAULT_FILTERS);
     setRawResults([]);
     setApiTotal(0);
     setHasSearched(false);
@@ -87,27 +93,39 @@ export function SearchPage() {
     setError(null);
   }, []);
 
-  // ── Update sidebar filters ─────────────────────────────────────────────────
+  // ── Sidebar edits pending values only ─────────────────────────────────────
   const handleFilterChange = useCallback(
     (updated: Partial<Omit<SearchFilters, "query">>) => {
-      setSidebarFilters((prev) => ({ ...prev, ...updated }));
+      setPendingFilters((prev) => ({ ...prev, ...updated }));
     },
     []
   );
 
-  // ── Apply client-side filters to the API results ──────────────────────────
-  // Memoised so it only recalculates when rawResults or sidebarFilters change.
+  // ── Apply Filters — commit pending → applied ───────────────────────────────
+  const handleApplyFilters = useCallback(() => {
+    setAppliedFilters({ ...pendingFilters });
+  }, [pendingFilters]);
+
+  // True when the sidebar has uncommitted edits vs the applied snapshot
+  const filtersDirty = !filtersAreEqual(
+    { ...pendingFilters, query: inputQuery },
+    { ...appliedFilters, query: inputQuery }
+  );
+
+  // ── Client-side filter applied to raw API results ─────────────────────────
   const filteredResults = useMemo(
-    () => applyFilters(rawResults, { query: inputQuery, ...sidebarFilters }),
-    [rawResults, sidebarFilters, inputQuery]
+    () => applyFilters(rawResults, { query: inputQuery, ...appliedFilters }),
+    [rawResults, appliedFilters, inputQuery]
   );
 
   return (
     <main className="flex-1 flex min-h-0" data-testid="search-page">
-      {/* Left sidebar filters */}
+      {/* Left sidebar — pending filter state + Apply button */}
       <FilterSidebar
-        filters={{ ...sidebarFilters, query: inputQuery }}
+        filters={{ ...pendingFilters, query: inputQuery }}
+        dirty={filtersDirty}
         onChange={handleFilterChange}
+        onApply={handleApplyFilters}
       />
 
       {/* Main content column */}
@@ -121,12 +139,7 @@ export function SearchPage() {
             onReset={handleReset}
             loading={loading}
           />
-
-          {/* Disclaimer */}
-          <p
-            className="mt-3 text-xs text-muted-foreground leading-relaxed"
-            data-testid="text-disclaimer"
-          >
+          <p className="mt-3 text-xs text-muted-foreground leading-relaxed" data-testid="text-disclaimer">
             <span className="font-medium text-foreground/60">Disclaimer:</span>{" "}
             Results are indexed from external open-access sources. Full text
             remains hosted by the original publisher or repository.

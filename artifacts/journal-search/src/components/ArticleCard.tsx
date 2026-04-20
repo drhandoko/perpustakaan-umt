@@ -1,9 +1,13 @@
 /**
- * Article result card — polished university library style.
- * All source links open in a new tab. No iframe embedding.
+ * Article result card.
+ * Displays metadata and two CTAs:
+ *   - PDF download link (opens in new tab) — shown only when a direct PDF link is available
+ *   - "Open at source" — always shown; opens the publisher/repository page in a new tab
+ *
+ * No PDFs or external content are ever embedded.
  */
 
-import { ExternalLink, Calendar, Globe, Scale } from "lucide-react";
+import { ExternalLink, Calendar, Globe, Scale, FileDown } from "lucide-react";
 import type { Article } from "../data/mockArticles";
 
 interface ArticleCardProps {
@@ -19,7 +23,10 @@ function licenseBadgeClass(license: string): string {
 }
 
 export function ArticleCard({ article }: ArticleCardProps) {
-  const { id, title, authors, journal, year, doi, sourceUrl, source, license, language, abstract } = article;
+  const {
+    id, title, authors, journal, year, doi, sourceUrl, pdfUrl,
+    source, license, language, abstract,
+  } = article;
 
   const authorString =
     authors.length > 3
@@ -31,7 +38,7 @@ export function ArticleCard({ article }: ArticleCardProps) {
       className="bg-card border border-card-border rounded-2xl p-7 shadow-sm hover:shadow-lg transition-shadow duration-200 group"
       data-testid={`card-article-${id}`}
     >
-      {/* Top row: source + license + language badges */}
+      {/* ── Top badges ── */}
       <div className="flex flex-wrap items-center gap-2 mb-4">
         <span
           className="text-[11px] font-semibold uppercase tracking-wider bg-primary/8 text-primary border border-primary/15 rounded-full px-3 py-1"
@@ -49,7 +56,7 @@ export function ArticleCard({ article }: ArticleCardProps) {
           </span>
         )}
 
-        {language !== "English" && (
+        {language !== "English" && language !== "Not available" && (
           <span
             className="text-[11px] font-semibold uppercase tracking-wider bg-secondary text-secondary-foreground border border-border rounded-full px-3 py-1"
             data-testid={`badge-language-${id}`}
@@ -59,7 +66,7 @@ export function ArticleCard({ article }: ArticleCardProps) {
         )}
       </div>
 
-      {/* Title */}
+      {/* ── Title ── */}
       <h2
         className="text-[17px] font-serif font-semibold text-foreground leading-snug mb-2 group-hover:text-primary transition-colors"
         data-testid={`text-title-${id}`}
@@ -67,7 +74,7 @@ export function ArticleCard({ article }: ArticleCardProps) {
         {title}
       </h2>
 
-      {/* Authors */}
+      {/* ── Authors ── */}
       <p
         className="text-sm text-muted-foreground mb-3"
         data-testid={`text-authors-${id}`}
@@ -75,31 +82,53 @@ export function ArticleCard({ article }: ArticleCardProps) {
         {authorString}
       </p>
 
-      {/* Abstract */}
+      {/* ── Abstract ── */}
       {abstract && (
         <p className="text-sm text-foreground/70 leading-relaxed line-clamp-2 mb-5">
           {abstract}
         </p>
       )}
 
-      {/* Divider */}
+      {/* ── Divider ── */}
       <div className="border-t border-border my-4" />
 
-      {/* Metadata pill row */}
-      <div className="flex flex-wrap gap-3 mb-5">
+      {/* ── Metadata pills ── */}
+      <div className="flex flex-wrap gap-2.5 mb-5">
         {/* Journal */}
         <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground bg-muted rounded-full px-3 py-1">
           <Globe className="w-3 h-3 shrink-0" aria-hidden="true" />
           <span>{journal}</span>
         </span>
 
-        {/* Year */}
+        {/* Year + optional PDF download — grouped together */}
         <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground bg-muted rounded-full px-3 py-1">
           <Calendar className="w-3 h-3 shrink-0" aria-hidden="true" />
-          <span>{year}</span>
+          <span data-testid={`text-year-${id}`}>
+            {year !== 0 ? year : "Not available"}
+          </span>
+
+          {/* PDF link — shown inline next to the year only when available */}
+          {pdfUrl && (
+            <>
+              <span className="mx-1 text-border select-none">·</span>
+              <a
+                href={pdfUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="inline-flex items-center gap-1 font-semibold text-primary hover:underline"
+                data-testid={`link-pdf-${id}`}
+                aria-label={`Download PDF for "${title}"`}
+                title="Download PDF"
+              >
+                <FileDown className="w-3 h-3" aria-hidden="true" />
+                PDF
+              </a>
+            </>
+          )}
         </span>
 
-        {/* License pill */}
+        {/* License */}
         {license && (
           <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground bg-muted rounded-full px-3 py-1">
             <Scale className="w-3 h-3 shrink-0" aria-hidden="true" />
@@ -108,7 +137,7 @@ export function ArticleCard({ article }: ArticleCardProps) {
         )}
       </div>
 
-      {/* Footer: DOI + CTA */}
+      {/* ── Footer: DOI + Open at source ── */}
       <div className="flex items-center justify-between gap-4">
         {doi ? (
           <span
@@ -121,6 +150,7 @@ export function ArticleCard({ article }: ArticleCardProps) {
           <span className="text-[11px] text-muted-foreground/50 italic">No DOI available</span>
         )}
 
+        {/* Opens the HTML source page in a new tab — never an iframe */}
         <a
           href={sourceUrl}
           target="_blank"

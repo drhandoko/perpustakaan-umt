@@ -108,15 +108,27 @@ function mapArticle(raw: DoajArticle, index: number): Article {
   const doiEntry = bib.identifier?.find((i) => i.type === "doi");
   const doi = doiEntry?.id ?? null;
 
-  // Source URL — prefer fulltext link; fall back to DOI resolver
-  const fulltextLink = bib.link?.find((l) => l.type === "fulltext");
+  // Links — DOAJ may return multiple links with different content_types
+  const links = bib.link ?? [];
+
+  // PDF link — look for content_type "PDF" (case-insensitive)
+  const pdfLink = links.find(
+    (l) => l.content_type?.toUpperCase() === "PDF" && l.url
+  );
+  const pdfUrl = pdfLink?.url ?? null;
+
+  // Source URL — prefer HTML fulltext; fall back to DOI resolver or DOAJ root
+  const htmlLink = links.find(
+    (l) => l.content_type?.toUpperCase() === "HTML" && l.url
+  );
+  const anyFulltext = links.find((l) => l.type === "fulltext" && l.url);
   const sourceUrl =
-    fulltextLink?.url ??
+    htmlLink?.url ??
+    anyFulltext?.url ??
     (doi ? `https://doi.org/${doi}` : "https://doaj.org");
 
   // Author names
-  const authors =
-    bib.author?.map((a) => a.name).filter(Boolean) ?? [];
+  const authors = bib.author?.map((a) => a.name).filter(Boolean) ?? [];
 
   return {
     id: raw.id ?? `doaj-${index}`,
@@ -126,6 +138,7 @@ function mapArticle(raw: DoajArticle, index: number): Article {
     year: bib.year ? parseInt(bib.year, 10) : 0,
     doi,
     sourceUrl,
+    pdfUrl,
     source: "DOAJ",
     license: resolveLicense(bib.license),
     language: resolveLanguage(bib.journal?.language),
