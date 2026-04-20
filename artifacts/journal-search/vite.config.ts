@@ -2,50 +2,53 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import path from "path";
-import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 
-const rawPort = process.env.PORT;
+// ─── Environment ──────────────────────────────────────────────────────────────
+// PORT   — dev server port.  Defaults to 5173 (Vite default) when not set.
+//          Required when running on Replit (set automatically by the platform).
+// BASE_PATH — URL base for the app (e.g. "/" or "/library/").
+//             Defaults to "/" so the app works at a domain root without config.
+//             Must end with "/" when set to a sub-path.
 
-if (!rawPort) {
-  throw new Error(
-    "PORT environment variable is required but was not provided.",
-  );
+const isProduction = process.env.NODE_ENV === "production";
+const onReplit = process.env.REPL_ID !== undefined;
+
+// PORT is only needed for the dev server; ignore it during production builds.
+let port = 5173;
+if (!isProduction) {
+  const rawPort = process.env.PORT;
+  if (onReplit && !rawPort) {
+    throw new Error("PORT environment variable is required but was not provided.");
+  }
+  if (rawPort) {
+    port = Number(rawPort);
+    if (Number.isNaN(port) || port <= 0) {
+      throw new Error(`Invalid PORT value: "${rawPort}"`);
+    }
+  }
 }
 
-const port = Number(rawPort);
+// BASE_PATH drives Vite's `base` option.  "/" works for root deployments.
+const basePath = process.env.BASE_PATH ?? "/";
 
-if (Number.isNaN(port) || port <= 0) {
-  throw new Error(`Invalid PORT value: "${rawPort}"`);
-}
+// ─── Plugins ──────────────────────────────────────────────────────────────────
 
-const basePath = process.env.BASE_PATH;
+const replitPlugins =
+  !isProduction && onReplit
+    ? await Promise.all([
+        import("@replit/vite-plugin-runtime-error-modal").then((m) => m.default()),
+        import("@replit/vite-plugin-cartographer").then((m) =>
+          m.cartographer({ root: path.resolve(import.meta.dirname, "..") })
+        ),
+        import("@replit/vite-plugin-dev-banner").then((m) => m.devBanner()),
+      ])
+    : [];
 
-if (!basePath) {
-  throw new Error(
-    "BASE_PATH environment variable is required but was not provided.",
-  );
-}
+// ─── Config ───────────────────────────────────────────────────────────────────
 
 export default defineConfig({
   base: basePath,
-  plugins: [
-    react(),
-    tailwindcss(),
-    runtimeErrorOverlay(),
-    ...(process.env.NODE_ENV !== "production" &&
-    process.env.REPL_ID !== undefined
-      ? [
-          await import("@replit/vite-plugin-cartographer").then((m) =>
-            m.cartographer({
-              root: path.resolve(import.meta.dirname, ".."),
-            }),
-          ),
-          await import("@replit/vite-plugin-dev-banner").then((m) =>
-            m.devBanner(),
-          ),
-        ]
-      : []),
-  ],
+  plugins: [react(), tailwindcss(), ...replitPlugins],
   resolve: {
     alias: {
       "@": path.resolve(import.meta.dirname, "src"),
@@ -66,15 +69,13 @@ export default defineConfig({
       strict: true,
       deny: ["**/.*"],
     },
-    // Proxy /api/* to the Express API server in development so the browser
-    // never has to talk to it directly (avoids CORS on cross-origin APIs such
-    // as DOAB).  In production the Replit path router — or an nginx/Caddy
-    // reverse proxy in self-hosted setups — handles the same routing.
+    // In development, proxy /api/* to the Express backend so the browser never
+    // needs to talk to it directly.  In production Express serves both API and
+    // static files on the same port — no proxy needed.
     proxy: {
       "/api": {
-        target: "http://localhost:8080",
+        target: `http://localhost:${process.env.API_PORT ?? 8080}`,
         changeOrigin: true,
-        rewrite: (path) => path, // keep /api prefix intact
       },
     },
   },

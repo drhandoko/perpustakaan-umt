@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "JZY9UzCP5ua7l16Gcu64l"
+uri = "file://README.md"
+type = "text"
+title = "Deployment README — Perpustakaan Universitas Murni Teguh"
