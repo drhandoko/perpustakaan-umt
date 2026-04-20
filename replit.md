@@ -26,6 +26,13 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - All external links open in new tab; no iframes
 - Mock data in `src/data/mockArticles.ts` — swap `searchArticles` in `src/lib/search.ts` for real API integration
 
+## Version Control
+
+- **GitHub remote**: `https://github.com/drhandoko/perpustakaan-umt.git` (remote name: `origin`)
+- **Branch**: `main` (tracking `origin/main`)
+- **Authentication**: GitHub OAuth integration (`github:1.0.0` in `.replit`)
+- **Push status**: All commits pushed; branch is in sync with remote
+
 ## Key Commands
 
 - `pnpm run typecheck` — full typecheck across all packages
