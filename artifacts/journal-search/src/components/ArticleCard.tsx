@@ -227,7 +227,9 @@ export function ArticleCard({ article }: ArticleCardProps) {
                 : `Journal quality tier: ${journalQuartile} (via OpenAlex Impact Factor)`
             }
           >
-            {journalQuartile}
+            {journalQuartile === "Unranked"
+              ? "Unranked (OpenAlex-based)"
+              : `${journalQuartile} (OpenAlex-based)`}
           </span>
         )}
 
