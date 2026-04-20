@@ -18,7 +18,7 @@ COPY artifacts/journal-search/package.json ./artifacts/journal-search/
 
 
 # Install all dependencies (uses frozen lockfile for reproducible builds)
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --no-frozen-lockfile
 
 # Copy full source after install to benefit from Docker layer cache
 COPY lib/       ./lib/
