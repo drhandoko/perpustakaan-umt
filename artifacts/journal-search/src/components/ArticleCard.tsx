@@ -196,7 +196,7 @@ export function ArticleCard({ article }: ArticleCardProps) {
 
   return (
     <article
-      className="bg-card border border-card-border rounded-2xl p-7 shadow-sm hover:shadow-lg transition-shadow duration-200 group"
+      className="bg-card border border-card-border rounded-2xl p-5 sm:p-7 shadow-sm hover:shadow-lg transition-shadow duration-200 group"
       data-testid={`card-article-${id}`}
     >
       {/* ── Top badges ── */}
@@ -267,7 +267,7 @@ export function ArticleCard({ article }: ArticleCardProps) {
       {contentType === "book"    && <BookBody    article={article} />}
 
       {/* ── Footer: identifier + PDF link + CTA ── */}
-      <div className="flex items-center justify-between gap-4 mt-1">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-1">
         <div className="flex items-center gap-3 min-w-0">
           {/* Primary identifier: DOI preferred, then ISBN, then placeholder */}
           {doi ? (
@@ -312,7 +312,7 @@ export function ArticleCard({ article }: ArticleCardProps) {
           href={sourceUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="shrink-0 inline-flex items-center gap-2 text-sm font-semibold text-primary bg-primary/6 border border-primary/20 hover:bg-primary hover:text-primary-foreground px-4 py-2 rounded-lg transition-colors duration-150"
+          className="shrink-0 inline-flex items-center justify-center gap-2 text-sm font-semibold text-primary bg-primary/6 border border-primary/20 hover:bg-primary hover:text-primary-foreground px-4 py-2.5 sm:py-2 rounded-lg transition-colors duration-150 w-full sm:w-auto"
           data-testid={`link-open-source-${id}`}
           aria-label={`${ctaLabel(contentType)}: "${title}" opens in a new tab`}
         >

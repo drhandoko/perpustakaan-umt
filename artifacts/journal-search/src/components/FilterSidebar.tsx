@@ -1,10 +1,14 @@
 /**
  * Left sidebar filter panel.
  *
+ * On desktop (md+) it is always visible as a fixed-width side column.
+ * On mobile (<md) it renders as a slide-in drawer controlled by
+ * the `isOpen` / `onClose` props from SearchPage.
+ *
  * Filters are dynamic — only sections relevant to the active SearchType
  * are rendered:
  *
- *   journals : Field / Subject, Language
+ *   journals : Field / Subject, Journal Ranking, Language
  *   books    : Source, Publication Year, Language
  *   articles : Publication Year, Language, License
  *
@@ -12,7 +16,7 @@
  * The dirty indicator fires whenever pending differs from applied.
  */
 
-import { SlidersHorizontal, Check, ExternalLink } from "lucide-react";
+import { SlidersHorizontal, Check, ExternalLink, X } from "lucide-react";
 import type { SearchFilters, SearchType } from "../lib/search";
 import {
   LANGUAGES, LICENSES, BOOK_SOURCES, YEAR_MIN, YEAR_MAX,
@@ -25,6 +29,8 @@ interface FilterSidebarProps {
   dirty: boolean;
   onChange: (updated: Partial<SearchFilters>) => void;
   onApply: () => void;
+  isOpen?: boolean;
+  onClose?: () => void;
 }
 
 // ─── Generic UI primitives ────────────────────────────────────────────────────
@@ -86,8 +92,6 @@ function CheckboxList({
 }
 
 // ─── Book source filter ───────────────────────────────────────────────────────
-// Active sources get a real checkbox; inactive ("coming soon") are shown
-// disabled with a badge so users know more sources are planned.
 
 function BookSourceFilter({
   selected,
@@ -155,7 +159,6 @@ function BookSourceFilter({
         </div>
       ))}
 
-      {/* Warning when no active source selected */}
       {BOOK_SOURCES.filter((s) => s.active && selected.includes(s.id)).length === 0 && (
         <p className="text-[11px] text-amber-600 leading-snug mt-1">
           Select at least one source to search.
@@ -166,9 +169,6 @@ function BookSourceFilter({
 }
 
 // ─── Journal ranking filter ───────────────────────────────────────────────────
-// Multi-select checkbox group.  Empty selection = show all (any ranking).
-// Q1–Q4 match the journalQuartile field; "unranked" matches no quartile data.
-// Multiple selections are combined with OR logic.
 
 function JournalRankingFilter({
   selected,
@@ -218,8 +218,6 @@ function JournalRankingFilter({
 }
 
 // ─── Journal subject / field filter ──────────────────────────────────────────
-// Shows all discipline groups as checkboxes.  Matching is done client-side
-// using substring matching against DOAJ LCC subject terms (see search.ts).
 
 function JournalSubjectFilter({
   selected,
@@ -335,6 +333,8 @@ export function FilterSidebar({
   dirty,
   onChange,
   onApply,
+  isOpen = false,
+  onClose,
 }: FilterSidebarProps) {
   function toggleLanguage(lang: string) {
     const next = filters.language.includes(lang)
@@ -350,136 +350,161 @@ export function FilterSidebar({
     onChange({ license: next });
   }
 
+  function handleApply() {
+    onApply();
+    onClose?.();
+  }
+
   const showYear     = searchType === "books" || searchType === "articles";
   const showLicense  = searchType === "articles";
   const showSources  = searchType === "books";
   const showSubjects = searchType === "journals";
   const showRanking  = searchType === "journals";
-  const sources     = FOOTER_SOURCE[searchType];
+  const sources      = FOOTER_SOURCE[searchType];
 
   return (
-    <aside
-      className="w-64 shrink-0 bg-sidebar border-r border-sidebar-border h-full flex flex-col"
-      data-testid="filter-sidebar"
-      aria-label="Search filters"
-    >
-      {/* Header */}
-      <div className="flex items-center gap-2.5 px-6 py-5 border-b border-sidebar-border">
-        <SlidersHorizontal className="w-4 h-4 text-primary" aria-hidden="true" />
-        <span className="text-sm font-semibold text-foreground tracking-tight">
-          Refine Results
-        </span>
-      </div>
+    <>
+      {/* Mobile backdrop — sits below the drawer, above main content */}
+      {isOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-black/40 md:hidden"
+          aria-hidden="true"
+          onClick={onClose}
+        />
+      )}
 
-      {/* Scrollable filter content */}
-      <div className="flex-1 overflow-y-auto px-6">
-
-        {/* ── Book Sources (books only) ── */}
-        {showSources && (
-          <FilterSection label="Source">
-            <BookSourceFilter
-              selected={filters.bookSources}
-              onChange={(next) => onChange({ bookSources: next })}
-            />
-          </FilterSection>
-        )}
-
-        {/* ── Publication Year (books + articles only) ── */}
-        {showYear && (
-          <FilterSection label="Publication Year">
-            <YearRangeFilter
-              yearFrom={filters.yearFrom}
-              yearTo={filters.yearTo}
-              onChange={onChange}
-            />
-          </FilterSection>
-        )}
-
-        {/* ── Journal Ranking (journals only) ── */}
-        {showRanking && (
-          <FilterSection label="Journal Ranking">
-            <JournalRankingFilter
-              selected={Array.isArray(filters.journalRanking) ? filters.journalRanking : []}
-              onChange={(next) => onChange({ journalRanking: next })}
-            />
-          </FilterSection>
-        )}
-
-        {/* ── Journal Field / Subject (journals only) ── */}
-        {showSubjects && (
-          <FilterSection label="Field of Study">
-            <JournalSubjectFilter
-              selected={filters.journalSubjects}
-              onChange={(next) => onChange({ journalSubjects: next })}
-            />
-          </FilterSection>
-        )}
-
-        {/* ── Language (all types) ── */}
-        <FilterSection label="Language">
-          <CheckboxList
-            options={LANGUAGES}
-            selected={filters.language}
-            onToggle={toggleLanguage}
-            onClear={() => onChange({ language: [] })}
-            testIdPrefix="filter-language"
-          />
-        </FilterSection>
-
-        {/* ── License (articles only) ── */}
-        {showLicense && (
-          <FilterSection label="License">
-            <CheckboxList
-              options={LICENSES}
-              selected={filters.license}
-              onToggle={toggleLicense}
-              onClear={() => onChange({ license: [] })}
-              testIdPrefix="filter-license"
-            />
-          </FilterSection>
-        )}
-
-        {/* ── Footer: source links + Apply button ── */}
-        <div className="py-5 flex flex-col gap-4">
-          <p className="text-[11px] text-muted-foreground/60 leading-relaxed">
-            Results fetched from{" "}
-            {sources.map((s, i) => (
-              <span key={s.href}>
-                <a
-                  href={s.href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="underline underline-offset-2 hover:text-primary transition-colors"
-                >
-                  {s.label}
-                </a>
-                {i < sources.length - 1 ? " and " : ""}
-              </span>
-            ))}
-            {" "}public API. No API key required.
-          </p>
-
-          {dirty && (
-            <p className="text-[11px] text-amber-600 leading-snug">
-              Filter changes not yet applied
-            </p>
-          )}
-
+      <aside
+        className={[
+          "bg-sidebar border-r border-sidebar-border flex flex-col h-full",
+          // Mobile: fixed drawer, slides in from left
+          "fixed inset-y-0 left-0 z-40 w-72 transition-transform duration-300 ease-in-out",
+          isOpen ? "translate-x-0" : "-translate-x-full",
+          // Desktop: normal sidebar column, always visible
+          "md:relative md:translate-x-0 md:w-64 md:z-auto md:shrink-0",
+        ].join(" ")}
+        data-testid="filter-sidebar"
+        aria-label="Search filters"
+      >
+        {/* Header — includes a close button on mobile */}
+        <div className="flex items-center gap-2.5 px-6 py-5 border-b border-sidebar-border">
+          <SlidersHorizontal className="w-4 h-4 text-primary shrink-0" aria-hidden="true" />
+          <span className="text-sm font-semibold text-foreground tracking-tight flex-1">
+            Refine Results
+          </span>
           <button
             type="button"
-            onClick={onApply}
-            data-testid="button-apply-filters"
-            className={`w-full inline-flex items-center justify-center gap-2 text-sm font-semibold py-2.5 rounded-lg transition-all ${
-              dirty
-                ? "bg-primary text-primary-foreground hover:opacity-90 shadow-sm"
-                : "bg-muted text-muted-foreground border border-border cursor-default"
-            }`}
+            onClick={onClose}
+            className="md:hidden p-1 -mr-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            aria-label="Close filters"
           >
-            <Check className="w-4 h-4" aria-hidden="true" />
-            Apply Filters
+            <X className="w-4 h-4" aria-hidden="true" />
           </button>
         </div>
-      </div>
-    </aside>
+
+        {/* Scrollable filter content */}
+        <div className="flex-1 overflow-y-auto px-6">
+
+          {showSources && (
+            <FilterSection label="Source">
+              <BookSourceFilter
+                selected={filters.bookSources}
+                onChange={(next) => onChange({ bookSources: next })}
+              />
+            </FilterSection>
+          )}
+
+          {showYear && (
+            <FilterSection label="Publication Year">
+              <YearRangeFilter
+                yearFrom={filters.yearFrom}
+                yearTo={filters.yearTo}
+                onChange={onChange}
+              />
+            </FilterSection>
+          )}
+
+          {showRanking && (
+            <FilterSection label="Journal Ranking">
+              <JournalRankingFilter
+                selected={Array.isArray(filters.journalRanking) ? filters.journalRanking : []}
+                onChange={(next) => onChange({ journalRanking: next })}
+              />
+            </FilterSection>
+          )}
+
+          {showSubjects && (
+            <FilterSection label="Field of Study">
+              <JournalSubjectFilter
+                selected={filters.journalSubjects}
+                onChange={(next) => onChange({ journalSubjects: next })}
+              />
+            </FilterSection>
+          )}
+
+          <FilterSection label="Language">
+            <CheckboxList
+              options={LANGUAGES}
+              selected={filters.language}
+              onToggle={toggleLanguage}
+              onClear={() => onChange({ language: [] })}
+              testIdPrefix="filter-language"
+            />
+          </FilterSection>
+
+          {showLicense && (
+            <FilterSection label="License">
+              <CheckboxList
+                options={LICENSES}
+                selected={filters.license}
+                onToggle={toggleLicense}
+                onClear={() => onChange({ license: [] })}
+                testIdPrefix="filter-license"
+              />
+            </FilterSection>
+          )}
+
+          {/* Footer: source links + Apply button */}
+          <div className="py-5 flex flex-col gap-4">
+            <p className="text-[11px] text-muted-foreground/60 leading-relaxed">
+              Results fetched from{" "}
+              {sources.map((s, i) => (
+                <span key={s.href}>
+                  <a
+                    href={s.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline underline-offset-2 hover:text-primary transition-colors"
+                  >
+                    {s.label}
+                  </a>
+                  {i < sources.length - 1 ? " and " : ""}
+                </span>
+              ))}
+              {" "}public API. No API key required.
+            </p>
+
+            {dirty && (
+              <p className="text-[11px] text-amber-600 leading-snug">
+                Filter changes not yet applied
+              </p>
+            )}
+
+            <button
+              type="button"
+              onClick={handleApply}
+              data-testid="button-apply-filters"
+              className={`w-full inline-flex items-center justify-center gap-2 text-sm font-semibold py-2.5 rounded-lg transition-all ${
+                dirty
+                  ? "bg-primary text-primary-foreground hover:opacity-90 shadow-sm"
+                  : "bg-muted text-muted-foreground border border-border cursor-default"
+              }`}
+            >
+              <Check className="w-4 h-4" aria-hidden="true" />
+              Apply Filters
+            </button>
+          </div>
+        </div>
+      </aside>
+    </>
   );
 }

@@ -109,7 +109,7 @@ export function SearchBar({
           type="button"
           onClick={onSearch}
           disabled={loading}
-          className="inline-flex items-center gap-2 bg-primary text-primary-foreground hover:opacity-90 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed text-sm font-semibold px-6 py-2.5 rounded-lg shadow-sm transition-all"
+          className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 bg-primary text-primary-foreground hover:opacity-90 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed text-sm font-semibold px-6 py-2.5 rounded-lg shadow-sm transition-all"
           data-testid="button-search"
           aria-label={loading ? "Searching…" : `Search ${currentLabel}`}
         >

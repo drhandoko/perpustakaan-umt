@@ -1,20 +1,9 @@
 /**
  * Main search page — Perpustakaan Universitas Murni Teguh discovery portal.
- *
- * Search type routing:
- *   journals → /api/journals-search backend proxy (DOAJ + OpenAlex quartile enrichment)
- *   books    → /api/books-search backend proxy (DOAB + OAPEN aggregated)
- *   articles → Crossref (journal-article type only, direct, CORS-OK)
- *
- * Filter model (pending vs applied):
- *   Pending filters live in sidebar while user edits them.
- *   Applied filters are committed on "Apply Filters" and drive client-side
- *   filtering of the fetched result set.
- *   bookSources is special: it also drives which backend sources are queried,
- *   so a search is re-run when a source checkbox changes and the user applies.
  */
 
 import { useState, useCallback, useMemo, useRef } from "react";
+import { SlidersHorizontal } from "lucide-react";
 import { SearchBar }         from "../components/SearchBar";
 import { FilterSidebar }     from "../components/FilterSidebar";
 import { ResultsArea }       from "../components/ResultsArea";
@@ -33,7 +22,6 @@ import { BOOK_SOURCES } from "../data/mockArticles";
 
 const PAGE_SIZE = 25;
 
-/** Default active book source IDs (only implemented sources). */
 const DEFAULT_BOOK_SOURCES = BOOK_SOURCES.filter((s) => s.active).map((s) => s.id);
 
 // ─── Defaults ─────────────────────────────────────────────────────────────────
@@ -72,39 +60,46 @@ function filtersAreEqual(
   );
 }
 
+/** Count non-default active filters for the badge on the mobile Filters button. */
+function countActiveFilters(f: Omit<SearchFilters, "query">): number {
+  let n = 0;
+  if (f.yearFrom !== "")               n++;
+  if (f.yearTo   !== "")               n++;
+  if (f.language.length > 0)           n += f.language.length;
+  if (f.license.length > 0)            n += f.license.length;
+  if (f.journalSubjects.length > 0)    n += f.journalSubjects.length;
+  if ((f.journalRanking ?? []).length > 0) n += (f.journalRanking ?? []).length;
+  return n;
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function SearchPage() {
-  // ── Search type ─────────────────────────────────────────────────────────────
   const [searchType, setSearchType] = useState<SearchType>("articles");
-
-  // ── Input ────────────────────────────────────────────────────────────────────
   const [inputQuery, setInputQuery] = useState("");
 
-  // ── Filters (pending vs applied) ─────────────────────────────────────────────
   const [pendingFilters, setPendingFilters] =
     useState<Omit<SearchFilters, "query">>(DEFAULT_FILTERS);
   const [appliedFilters, setAppliedFilters] =
     useState<Omit<SearchFilters, "query">>(DEFAULT_FILTERS);
 
-  // ── Results & pagination ─────────────────────────────────────────────────────
   const [rawResults, setRawResults]   = useState<Article[]>([]);
   const [apiTotal, setApiTotal]       = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
 
-  // ── Sort ─────────────────────────────────────────────────────────────────────
   const [sort, setSort] = useState<SortOrder>("relevance");
 
-  // ── UI state ─────────────────────────────────────────────────────────────────
   const [hasSearched, setHasSearched] = useState(false);
   const [loading, setLoading]         = useState(false);
   const [error, setError]             = useState<string | null>(null);
 
-  // Refs to preserve state across pagination
-  const lastQueryRef  = useRef<string>("");
-  const lastTypeRef   = useRef<SearchType>("articles");
+  // Mobile sidebar drawer state
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const lastQueryRef   = useRef<string>("");
+  const lastTypeRef    = useRef<SearchType>("articles");
   const lastSourcesRef = useRef<string[]>(DEFAULT_BOOK_SOURCES);
-  const contentDivRef = useRef<HTMLDivElement>(null);
+  const contentDivRef  = useRef<HTMLDivElement>(null);
 
   // ── Core search executor ──────────────────────────────────────────────────────
   const runSearch = useCallback(
@@ -131,7 +126,6 @@ export function SearchPage() {
         if (type === "journals") {
           ({ articles, total } = await searchJournals(query, PAGE_SIZE, page));
         } else if (type === "books") {
-          // Only pass active (implemented) sources to the backend
           const activeIds = activeSources.filter((id) =>
             BOOK_SOURCES.some((s) => s.id === id && s.active)
           );
@@ -153,16 +147,13 @@ export function SearchPage() {
     []
   );
 
-  // ── Keyword search — always resets to page 1 ─────────────────────────────────
   const handleSearch = useCallback(async () => {
     const trimmed = inputQuery.trim();
     if (!trimmed) { setError("Please enter a search term."); return; }
     setSort("relevance");
-    // Use the currently applied (not pending) filters for the search
     await runSearch(searchType, trimmed, 1, appliedFilters.bookSources);
   }, [inputQuery, searchType, appliedFilters.bookSources, runSearch]);
 
-  // ── Search type change — full reset ──────────────────────────────────────────
   const handleSearchTypeChange = useCallback((type: SearchType) => {
     setSearchType(type);
     setRawResults([]);
@@ -178,7 +169,6 @@ export function SearchPage() {
     lastSourcesRef.current = DEFAULT_BOOK_SOURCES;
   }, []);
 
-  // ── Pagination ────────────────────────────────────────────────────────────────
   const handlePageChange = useCallback(
     async (page: number) => {
       if (!lastQueryRef.current) return;
@@ -192,10 +182,8 @@ export function SearchPage() {
     [runSearch]
   );
 
-  // ── Sort (client-side, instant) ───────────────────────────────────────────────
   const handleSortChange = useCallback((newSort: SortOrder) => setSort(newSort), []);
 
-  // ── Reset ─────────────────────────────────────────────────────────────────────
   const handleReset = useCallback(() => {
     setInputQuery("");
     setPendingFilters(DEFAULT_FILTERS);
@@ -210,18 +198,15 @@ export function SearchPage() {
     lastQueryRef.current = "";
   }, []);
 
-  // ── Sidebar filter edits (pending only) ──────────────────────────────────────
   const handleFilterChange = useCallback(
     (updated: Partial<Omit<SearchFilters, "query">>) =>
       setPendingFilters((prev) => ({ ...prev, ...updated })),
     []
   );
 
-  // ── Apply Filters — commit pending → applied, re-run if sources changed ───────
   const handleApplyFilters = useCallback(async () => {
     setAppliedFilters({ ...pendingFilters });
 
-    // If the bookSources changed AND we already have results, re-run the search
     if (
       searchType === "books" &&
       lastQueryRef.current &&
@@ -236,10 +221,8 @@ export function SearchPage() {
     }
   }, [pendingFilters, appliedFilters.bookSources, searchType, runSearch]);
 
-  // ── Dirty flag ────────────────────────────────────────────────────────────────
   const filtersDirty = !filtersAreEqual(pendingFilters, appliedFilters);
 
-  // ── Derived results: filter → sort ───────────────────────────────────────────
   const filteredResults = useMemo(
     () => applyFilters(rawResults, { query: inputQuery, ...appliedFilters }),
     [rawResults, appliedFilters, inputQuery]
@@ -255,15 +238,19 @@ export function SearchPage() {
     [apiTotal]
   );
 
+  const activeFilterCount = countActiveFilters(appliedFilters);
+
   return (
     <main className="flex-1 flex min-h-0" data-testid="search-page">
-      {/* Left sidebar */}
+      {/* Sidebar — always visible on desktop, drawer on mobile */}
       <FilterSidebar
         searchType={searchType}
         filters={{ ...pendingFilters, query: inputQuery }}
         dirty={filtersDirty}
         onChange={handleFilterChange}
         onApply={handleApplyFilters}
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
       />
 
       {/* Main content column */}
@@ -272,7 +259,28 @@ export function SearchPage() {
         className="flex-1 flex flex-col min-w-0 overflow-y-auto bg-background"
       >
         {/* Sticky search area */}
-        <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b border-border px-8 py-6">
+        <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b border-border px-4 sm:px-8 py-4 sm:py-6">
+          {/* Mobile filter toggle */}
+          <div className="flex items-center gap-3 mb-3 md:hidden">
+            <button
+              type="button"
+              onClick={() => setSidebarOpen(true)}
+              className="inline-flex items-center gap-2 text-sm font-semibold text-primary bg-primary/6 border border-primary/20 hover:bg-primary/10 active:scale-[0.97] rounded-lg px-4 py-2 transition-all"
+              aria-label="Open search filters"
+            >
+              <SlidersHorizontal className="w-4 h-4" aria-hidden="true" />
+              Filters
+              {activeFilterCount > 0 && (
+                <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold">
+                  {activeFilterCount}
+                </span>
+              )}
+            </button>
+            {filtersDirty && (
+              <span className="text-[11px] text-amber-600">Filters not yet applied</span>
+            )}
+          </div>
+
           <SearchBar
             value={inputQuery}
             searchType={searchType}
@@ -290,7 +298,7 @@ export function SearchPage() {
         </div>
 
         {/* Results */}
-        <div className="px-8 py-8">
+        <div className="px-4 sm:px-8 py-6 sm:py-8">
           <ResultsArea
             articles={displayedResults}
             hasSearched={hasSearched}
