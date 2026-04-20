@@ -55,7 +55,7 @@ export function FilterSidebar({
 
   return (
     <aside
-      className="w-64 shrink-0 bg-sidebar border-r border-sidebar-border min-h-full flex flex-col"
+      className="w-64 shrink-0 bg-sidebar border-r border-sidebar-border h-full flex flex-col"
       data-testid="filter-sidebar"
       aria-label="Search filters"
     >
