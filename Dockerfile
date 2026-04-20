@@ -18,8 +18,7 @@ COPY artifacts/journal-search/package.json ./artifacts/journal-search/
 
 
 # Install all dependencies (uses frozen lockfile for reproducible builds)
-RUN pnpm install --no-frozen-lockfile && cd artifacts/journal-search && pnpm add -D @rollup/rollup-linux-x64-musl && cd /app
-
+RUN pnpm install --no-frozen-lockfile && pnpm add -w -D @rollup/rollup-linux-x64-musl
 # Copy full source after install to benefit from Docker layer cache
 COPY lib/       ./lib/
 COPY artifacts/ ./artifacts/
