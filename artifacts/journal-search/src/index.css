@@ -65,6 +65,9 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+
+  /* Custom xs breakpoint — between mobile and sm (640px) */
+  --breakpoint-xs: 480px;
 }
 
 /* LIGHT MODE — Academic Blue/White palette */

@@ -227,9 +227,15 @@ export function ArticleCard({ article }: ArticleCardProps) {
                 : `Journal quality tier: ${journalQuartile} (via OpenAlex Impact Factor)`
             }
           >
-            {journalQuartile === "Unranked"
-              ? "Unranked (OpenAlex-based)"
-              : `${journalQuartile} (OpenAlex-based)`}
+            {/* Full label on sm+, abbreviated on mobile */}
+            <span className="sm:hidden">
+              {journalQuartile === "Unranked" ? "Unranked" : journalQuartile}
+            </span>
+            <span className="hidden sm:inline">
+              {journalQuartile === "Unranked"
+                ? "Unranked (OpenAlex-based)"
+                : `${journalQuartile} (OpenAlex-based)`}
+            </span>
           </span>
         )}
 
@@ -271,11 +277,11 @@ export function ArticleCard({ article }: ArticleCardProps) {
         <div className="flex items-center gap-3 min-w-0">
           {/* Primary identifier: DOI preferred, then ISBN, then placeholder */}
           {doi ? (
-            <span className="text-[11px] font-mono text-muted-foreground/70 truncate" data-testid={`text-doi-${id}`}>
+            <span className="min-w-0 text-[11px] font-mono text-muted-foreground/70 truncate" data-testid={`text-doi-${id}`}>
               DOI: {doi}
             </span>
           ) : article.isbn ? (
-            <span className="text-[11px] font-mono text-muted-foreground/70 truncate">
+            <span className="min-w-0 text-[11px] font-mono text-muted-foreground/70 truncate">
               ISBN: {article.isbn}
             </span>
           ) : (
