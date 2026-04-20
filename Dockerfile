@@ -1,4 +1,4 @@
-FROM node:20-alpine AS base
+FROM node:20-slim AS base
 
 RUN npm install -g pnpm
 
@@ -18,7 +18,7 @@ COPY artifacts/journal-search/package.json ./artifacts/journal-search/
 
 
 # Install all dependencies (uses frozen lockfile for reproducible builds)
-RUN pnpm install --no-frozen-lockfile && pnpm add -D @rollup/rollup-linux-x64-musl
+RUN pnpm install --no-frozen-lockfile && cd artifacts/journal-search && pnpm add -D @rollup/rollup-linux-x64-musl && cd /app
 
 # Copy full source after install to benefit from Docker layer cache
 COPY lib/       ./lib/
@@ -29,7 +29,7 @@ RUN BASE_PATH=/ pnpm run build
 
 # ── Runtime image ─────────────────────────────────────────────────────────────
 # Copy only the compiled outputs — no source, no dev dependencies, no tooling.
-FROM node:20-alpine AS runtime
+FROM node:20-slim AS runtime
 
 WORKDIR /app
 
