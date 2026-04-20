@@ -51,14 +51,16 @@ function licenseBadgeClass(license: string): string {
 }
 
 /**
- * Returns Tailwind classes for an SJR quartile badge.
- * Q1 = emerald (top), Q2 = sky, Q3 = amber, Q4 = rose (bottom).
+ * Returns Tailwind classes for a journal quality quartile badge.
+ * Q1 = emerald (top), Q2 = sky, Q3 = amber, Q4 = rose, Unranked = muted.
+ * Source: OpenAlex 2yr_mean_citedness (Journal Impact Factor proxy).
  */
 function quartileBadgeClass(q: JournalQuartile): string {
-  if (q === "Q1") return "bg-emerald-50 text-emerald-700 border-emerald-200";
-  if (q === "Q2") return "bg-sky-50 text-sky-700 border-sky-200";
-  if (q === "Q3") return "bg-amber-50 text-amber-700 border-amber-200";
-  return            "bg-rose-50 text-rose-700 border-rose-200";
+  if (q === "Q1")       return "bg-emerald-50 text-emerald-700 border-emerald-200";
+  if (q === "Q2")       return "bg-sky-50 text-sky-700 border-sky-200";
+  if (q === "Q3")       return "bg-amber-50 text-amber-700 border-amber-200";
+  if (q === "Q4")       return "bg-rose-50 text-rose-700 border-rose-200";
+  /* Unranked */        return "bg-muted text-muted-foreground border-border";
 }
 
 /** Source badge colour per book index provider. */
@@ -214,12 +216,16 @@ export function ArticleCard({ article }: ArticleCardProps) {
           </span>
         )}
 
-        {/* SJR quartile badge — journals only, shown only when quartile data is available */}
+        {/* Quality quartile badge — journals only, always shown (Unranked when no OpenAlex data) */}
         {contentType === "journal" && journalQuartile && (
           <span
             className={`${badgeBase} ${quartileBadgeClass(journalQuartile)}`}
             data-testid={`badge-quartile-${id}`}
-            title="SJR (Scimago Journal Rankings) quartile"
+            title={
+              journalQuartile === "Unranked"
+                ? "Not indexed in OpenAlex — no impact data available"
+                : `Journal quality tier: ${journalQuartile} (via OpenAlex Impact Factor)`
+            }
           >
             {journalQuartile}
           </span>

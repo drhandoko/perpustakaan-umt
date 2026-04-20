@@ -14,10 +14,11 @@
 export type ContentType = "article" | "journal" | "book";
 
 /**
- * SJR (Scimago Journal Rankings) quartile tier.
- * Undefined means the journal is not indexed in SJR or data is unavailable.
+ * Quality quartile tier for journal records.
+ *   Q1–Q4   — derived from OpenAlex 2yr_mean_citedness (Journal Impact Factor).
+ *   Unranked — journal not found in OpenAlex (no citation impact data available).
  */
-export type JournalQuartile = "Q1" | "Q2" | "Q3" | "Q4";
+export type JournalQuartile = "Q1" | "Q2" | "Q3" | "Q4" | "Unranked";
 
 export interface Article {
   id: string;
@@ -45,11 +46,23 @@ export interface Article {
   /** Country of the publisher (journals) */
   country?: string;
   /**
-   * SJR quartile ranking for journal records.
-   * Only present when quartile data is available.
-   * Undefined = unranked / not indexed in SJR.
+   * Quality quartile tier for journal records (from OpenAlex JIF).
+   * Always set for journals returned by /api/journals-search:
+   *   Q1/Q2/Q3/Q4 = found in OpenAlex with sufficient citation data.
+   *   "Unranked"  = not found in OpenAlex.
+   * Undefined for non-journal content types.
    */
   journalQuartile?: JournalQuartile;
+  /** Print ISSN from DOAJ — journals only. */
+  issn?: string;
+  /** Electronic ISSN from DOAJ — journals only. */
+  eissn?: string;
+  /**
+   * Source of the quartile ranking.
+   *   "OpenAlex" — enriched via api.openalex.org using 2yr_mean_citedness.
+   *   "None"     — not found in OpenAlex; quartile set to "Unranked".
+   */
+  rankingSource?: string;
 }
 
 /** Kept for backwards-compatibility with any import that references this. */

@@ -154,14 +154,19 @@ export function applyFilters(
 
     // Journal ranking filter — only applied when the article is a journal and
     // at least one ranking tier is selected. Multiple tiers are OR-combined.
+    // "Unranked" journals have journalQuartile === "Unranked" (explicit string,
+    // not undefined) since the backend always sets this field for journal records.
     if (article.contentType === "journal" && journalRanking.length > 0) {
       const wantsUnranked = journalRanking.includes("unranked");
       const wantedTiers   = journalRanking.filter((r) => r !== "unranked");
 
-      const matchesTier     = wantedTiers.length > 0 && article.journalQuartile
-        ? wantedTiers.includes(article.journalQuartile)
+      const quartile    = article.journalQuartile;
+      const isUnranked  = !quartile || quartile === "Unranked";
+
+      const matchesTier = wantedTiers.length > 0 && quartile && quartile !== "Unranked"
+        ? wantedTiers.includes(quartile)
         : false;
-      const matchesUnranked = wantsUnranked && !article.journalQuartile;
+      const matchesUnranked = wantsUnranked && isUnranked;
 
       if (!matchesTier && !matchesUnranked) return false;
     }

@@ -2,7 +2,7 @@
  * Main search page — Perpustakaan Universitas Murni Teguh discovery portal.
  *
  * Search type routing:
- *   journals → DOAJ journals API (direct, CORS-OK)
+ *   journals → /api/journals-search backend proxy (DOAJ + OpenAlex quartile enrichment)
  *   books    → /api/books-search backend proxy (DOAB + OAPEN aggregated)
  *   articles → Crossref (journal-article type only, direct, CORS-OK)
  *
@@ -18,7 +18,7 @@ import { useState, useCallback, useMemo, useRef } from "react";
 import { SearchBar }         from "../components/SearchBar";
 import { FilterSidebar }     from "../components/FilterSidebar";
 import { ResultsArea }       from "../components/ResultsArea";
-import { searchDoajJournals } from "../lib/doajApi";
+import { searchJournals }     from "../lib/journalsApi";
 import { searchBooks }        from "../lib/booksApi";
 import { searchCrossref }     from "../lib/crossrefApi";
 import {
@@ -129,7 +129,7 @@ export function SearchPage() {
         let total: number;
 
         if (type === "journals") {
-          ({ articles, total } = await searchDoajJournals(query, PAGE_SIZE, page));
+          ({ articles, total } = await searchJournals(query, PAGE_SIZE, page));
         } else if (type === "books") {
           // Only pass active (implemented) sources to the backend
           const activeIds = activeSources.filter((id) =>
