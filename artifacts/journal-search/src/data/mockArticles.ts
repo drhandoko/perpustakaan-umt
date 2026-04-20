@@ -243,9 +243,9 @@ export const mockArticles: Article[] = [
  */
 export const SOURCES = ["All", "PLOS ONE", "PubMed Central", "arXiv", "CORE", "EuropePMC"];
 
-export const LANGUAGES = ["All", "English", "Indonesian", "Spanish", "French", "German", "Portuguese"];
+export const LANGUAGES = ["English", "Indonesian", "Spanish", "French", "German", "Portuguese"];
 
-export const LICENSES = ["All", "CC BY 4.0", "CC BY-NC 4.0", "CC BY-NC-ND 4.0", "CC BY-SA 4.0"];
+export const LICENSES = ["CC BY 4.0", "CC BY-NC 4.0", "CC BY-NC-ND 4.0", "CC BY-SA 4.0"];
 
 export const YEAR_MIN = 2000;
 export const YEAR_MAX = 2026;

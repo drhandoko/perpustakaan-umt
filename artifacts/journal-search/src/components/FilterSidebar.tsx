@@ -175,44 +175,76 @@ export function FilterSidebar({
         {/* ── Language ── */}
         <FilterSection label="Language">
           <div className="flex flex-col gap-2.5">
-            {LANGUAGES.map((lang) => (
-              <label key={lang} className="flex items-center gap-2.5 cursor-pointer group">
-                <input
-                  type="radio"
-                  name="language"
-                  value={lang}
-                  checked={filters.language === lang}
-                  onChange={() => onChange({ language: lang })}
-                  className="accent-primary w-3.5 h-3.5 shrink-0"
-                  data-testid={`filter-language-${lang.toLowerCase()}`}
-                />
-                <span className="text-sm text-foreground/80 group-hover:text-primary transition-colors">
-                  {lang}
-                </span>
-              </label>
-            ))}
+            {filters.language.length > 0 && (
+              <button
+                type="button"
+                onClick={() => onChange({ language: [] })}
+                className="self-start text-[10px] text-primary underline underline-offset-2 hover:opacity-70 transition-opacity mb-0.5"
+              >
+                Clear selection
+              </button>
+            )}
+            {LANGUAGES.map((lang) => {
+              const checked = filters.language.includes(lang);
+              return (
+                <label key={lang} className="flex items-center gap-2.5 cursor-pointer group">
+                  <input
+                    type="checkbox"
+                    value={lang}
+                    checked={checked}
+                    onChange={() => {
+                      const next = checked
+                        ? filters.language.filter((l) => l !== lang)
+                        : [...filters.language, lang];
+                      onChange({ language: next });
+                    }}
+                    className="accent-primary w-3.5 h-3.5 shrink-0 rounded"
+                    data-testid={`filter-language-${lang.toLowerCase()}`}
+                  />
+                  <span className="text-sm text-foreground/80 group-hover:text-primary transition-colors">
+                    {lang}
+                  </span>
+                </label>
+              );
+            })}
           </div>
         </FilterSection>
 
         {/* ── License ── */}
         <FilterSection label="License">
           <div className="flex flex-col gap-2.5">
-            {LICENSES.map((lic) => (
-              <label key={lic} className="flex items-center gap-2.5 cursor-pointer group">
-                <input
-                  type="radio"
-                  name="license"
-                  value={lic}
-                  checked={filters.license === lic}
-                  onChange={() => onChange({ license: lic })}
-                  className="accent-primary w-3.5 h-3.5 shrink-0"
-                  data-testid={`filter-license-${lic.replace(/\s+/g, "-").toLowerCase()}`}
-                />
-                <span className="text-sm text-foreground/80 group-hover:text-primary transition-colors">
-                  {lic}
-                </span>
-              </label>
-            ))}
+            {filters.license.length > 0 && (
+              <button
+                type="button"
+                onClick={() => onChange({ license: [] })}
+                className="self-start text-[10px] text-primary underline underline-offset-2 hover:opacity-70 transition-opacity mb-0.5"
+              >
+                Clear selection
+              </button>
+            )}
+            {LICENSES.map((lic) => {
+              const checked = filters.license.includes(lic);
+              return (
+                <label key={lic} className="flex items-center gap-2.5 cursor-pointer group">
+                  <input
+                    type="checkbox"
+                    value={lic}
+                    checked={checked}
+                    onChange={() => {
+                      const next = checked
+                        ? filters.license.filter((l) => l !== lic)
+                        : [...filters.license, lic];
+                      onChange({ license: next });
+                    }}
+                    className="accent-primary w-3.5 h-3.5 shrink-0 rounded"
+                    data-testid={`filter-license-${lic.replace(/\s+/g, "-").toLowerCase()}`}
+                  />
+                  <span className="text-sm text-foreground/80 group-hover:text-primary transition-colors">
+                    {lic}
+                  </span>
+                </label>
+              );
+            })}
           </div>
         </FilterSection>
 

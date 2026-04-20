@@ -16,8 +16,8 @@ export interface SearchFilters {
   query: string;
   yearFrom: number | "";
   yearTo: number | "";
-  language: string;
-  license: string;
+  language: string[];
+  license: string[];
 }
 
 /** Which APIs to query. At least one must be true. */
@@ -89,13 +89,13 @@ export function applyFilters(
       if (yearTo   !== "" && article.year > yearTo)   return false;
     }
 
-    // Language filter
-    if (language && language !== "All" && article.language !== language)
+    // Language filter — empty array means "all languages"
+    if (language.length > 0 && !language.includes(article.language))
       return false;
 
-    // License filter
-    if (license && license !== "All") {
-      if (!article.license || article.license !== license) return false;
+    // License filter — empty array means "all licenses"
+    if (license.length > 0) {
+      if (!article.license || !license.includes(article.license)) return false;
     }
 
     return true;

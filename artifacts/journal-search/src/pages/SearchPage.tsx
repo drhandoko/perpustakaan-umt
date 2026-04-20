@@ -39,8 +39,8 @@ const PAGE_SIZE = 25;
 const DEFAULT_FILTERS: Omit<SearchFilters, "query"> = {
   yearFrom: "",
   yearTo: "",
-  language: "All",
-  license: "All",
+  language: [],
+  license: [],
 };
 
 const DEFAULT_SOURCES: SourceSelection = {
@@ -50,6 +50,10 @@ const DEFAULT_SOURCES: SourceSelection = {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
+function arraysEqual(a: string[], b: string[]): boolean {
+  return a.length === b.length && a.every((v) => b.includes(v));
+}
+
 function filtersAreEqual(
   a: Omit<SearchFilters, "query">,
   b: Omit<SearchFilters, "query">
@@ -57,8 +61,8 @@ function filtersAreEqual(
   return (
     a.yearFrom === b.yearFrom &&
     a.yearTo   === b.yearTo   &&
-    a.language === b.language &&
-    a.license  === b.license
+    arraysEqual(a.language, b.language) &&
+    arraysEqual(a.license,  b.license)
   );
 }
 
